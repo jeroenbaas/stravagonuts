@@ -1,0 +1,564 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - Strava LAU Mapper{% endblock %}
+
+{% block extra_css %}
+<style>
+    .stats-container {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 20px;
+        margin-bottom: 30px;
+    }
+
+    .stat-card {
+        background: white;
+        color: #333;
+        padding: 25px;
+        border-radius: 10px;
+        text-align: center;
+        border: 1px solid #e0e0e0;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    }
+
+    .stat-number {
+        font-size: 3em;
+        font-weight: bold;
+        margin-bottom: 5px;
+        color: #1a73e8;
+    }
+
+    .stat-label {
+        font-size: 1.1em;
+        color: #5f6368;
+    }
+
+    .controls {
+        display: flex;
+        gap: 15px;
+        margin-bottom: 30px;
+        flex-wrap: wrap;
+    }
+
+    .map-container {
+        margin: 30px 0;
+        text-align: center;
+    }
+
+    .map-container img {
+        max-width: 100%;
+        border-radius: 10px;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+    }
+
+    .regions-table-container {
+        margin-top: 40px;
+        overflow-x: auto;
+    }
+
+    table {
+        width: 100%;
+        border-collapse: collapse;
+        background: white;
+    }
+
+    th {
+        background: #f5f5f5;
+        padding: 15px;
+        text-align: left;
+        font-weight: 600;
+        border-bottom: 2px solid #ddd;
+        cursor: pointer;
+        user-select: none;
+        position: relative;
+    }
+
+    th:hover {
+        background: #e8e8e8;
+    }
+
+    th.sortable::after {
+        content: ' ⇅';
+        color: #999;
+        font-size: 0.8em;
+    }
+
+    th.sort-asc::after {
+        content: ' ▲';
+        color: #1a73e8;
+    }
+
+    th.sort-desc::after {
+        content: ' ▼';
+        color: #1a73e8;
+    }
+
+    td {
+        padding: 12px 15px;
+        border-bottom: 1px solid #eee;
+    }
+
+    tr:hover {
+        background: #f9f9f9;
+    }
+
+    .map-container {
+        margin: 30px 0;
+        border-radius: 10px;
+        overflow: hidden;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+        position: relative;
+        min-height: 600px;
+    }
+
+    .map-container iframe {
+        width: 100%;
+        height: 600px;
+        border: none;
+        display: block;
+    }
+
+    .tabs {
+        display: flex;
+        gap: 0;
+        margin: 30px 0 0 0;
+        border-bottom: 3px solid #e0e0e0;
+    }
+
+    .tab {
+        padding: 14px 28px;
+        background: transparent;
+        border: none;
+        border-bottom: 3px solid transparent;
+        cursor: pointer;
+        font-size: 16px;
+        font-weight: 600;
+        color: #5f6368;
+        transition: all 0.2s ease;
+        position: relative;
+        bottom: -3px;
+    }
+
+    .tab:hover {
+        background: rgba(26, 115, 232, 0.05);
+        color: #1a73e8;
+    }
+
+    .tab.active {
+        background: transparent;
+        color: #1a73e8;
+        border-bottom: 3px solid #1a73e8;
+    }
+
+    .level-stats {
+        background: white;
+        padding: 20px;
+        margin: 0 0 20px 0;
+        border: 1px solid #e0e0e0;
+        border-top: none;
+    }
+
+    .map-loading {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: white;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        z-index: 10;
+        gap: 15px;
+        font-size: 16px;
+        color: #5f6368;
+    }
+
+    .map-loading.hidden {
+        display: none;
+    }
+
+    .spinner {
+        width: 50px;
+        height: 50px;
+        border: 4px solid #f3f3f3;
+        border-top: 4px solid #1a73e8;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+
+    .no-data {
+        text-align: center;
+        padding: 60px 20px;
+        color: #999;
+    }
+
+    .no-data h2 {
+        margin-bottom: 20px;
+        color: #666;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div style="background: #e8f0fe; border-left: 4px solid #1a73e8; padding: 15px; margin-bottom: 20px; border-radius: 6px; display: flex; justify-content: space-between; align-items: center;">
+    <div>
+        <strong style="color: #333;">Connected Account:</strong>
+        <span style="color: #1a73e8; font-weight: 600;">{{ athlete_name }}</span>
+        {% if athlete_id %}
+        <span style="color: #5f6368; font-size: 0.9em;">(Strava ID: {{ athlete_id }})</span>
+        {% endif %}
+    </div>
+</div>
+
+<div class="stats-container">
+    <div class="stat-card">
+        <div class="stat-number">{{ activity_count }}</div>
+        <div class="stat-label">Total Activities</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-number">{{ activities_with_streams }}</div>
+        <div class="stat-label">With GPS Data</div>
+    </div>
+</div>
+
+{% if should_auto_process %}
+<div class="info-box" style="background: #fff3cd; border-left-color: #ffc107; color: #856404;">
+    <strong>Auto-processing:</strong>
+    {% if activities_not_fetched > 0 %}
+        Detected {{ activities_not_fetched }} activities that need GPS data fetching.
+    {% else %}
+        Maps are missing but activities with GPS data found. Regenerating maps...
+    {% endif %}
+    Processing will start automatically...
+</div>
+{% endif %}
+
+<div class="controls">
+    <button id="update-btn" onclick="updateActivities()">Update Activities</button>
+    <button id="reset-btn" class="danger" onclick="resetData()">Complete Reset</button>
+</div>
+
+<div class="progress-container" id="progress-container">
+    <div class="progress-bar">
+        <div class="progress-fill" id="progress-fill">0%</div>
+    </div>
+    <div class="progress-message" id="progress-message">Initializing...</div>
+</div>
+
+<div id="alert-container"></div>
+
+{% if has_data %}
+<div class="tabs">
+    <button class="tab active" onclick="switchLevel('lau')">LAU</button>
+    <button class="tab" onclick="switchLevel(3)">NUTS 3</button>
+    <button class="tab" onclick="switchLevel(2)">NUTS 2</button>
+    <button class="tab" onclick="switchLevel(1)">NUTS 1</button>
+    <button class="tab" onclick="switchLevel(0)">NUTS 0</button>
+</div>
+
+<div class="level-stats">
+    <div class="stat-card" style="margin: 0;">
+        <div class="stat-number" id="regions-count">{{ lau_count }}</div>
+        <div class="stat-label"><span id="level-name">LAU</span> Regions Visited</div>
+    </div>
+</div>
+
+<div class="map-container">
+    <div class="map-loading" id="map-loading">
+        <div class="spinner"></div>
+        <div>Loading map...</div>
+    </div>
+    <iframe src="/static/map_lau.html?t={{ range(1, 999999) | random }}" id="activity-map" onload="hideMapLoading()"></iframe>
+</div>
+
+<div class="regions-table-container">
+    <h2 style="margin-bottom: 20px; color: #333;"><span id="level-title">LAU</span> Regions</h2>
+    <table id="regions-table">
+        <thead>
+            <tr>
+                <th class="sortable" onclick="sortTable(0, 'string')">Region Name</th>
+                <th class="sortable" onclick="sortTable(1, 'string')">Country</th>
+                <th class="sortable" onclick="sortTable(2, 'number')">Activities</th>
+                <th class="sortable" onclick="sortTable(3, 'date')">First Visited</th>
+            </tr>
+        </thead>
+        <tbody id="regions-tbody">
+            <tr>
+                <td colspan="4" style="text-align: center;">Loading...</td>
+            </tr>
+        </tbody>
+    </table>
+</div>
+{% else %}
+<div class="no-data">
+    <h2>No Data Yet</h2>
+    <p>Click "Update Activities" or "Complete Reset" to load your Strava activities.</p>
+</div>
+{% endif %}
+
+<script>
+let isProcessing = false;
+let statusCheckInterval = null;
+
+async function updateActivities() {
+    if (isProcessing) return;
+
+    // Show progress immediately
+    isProcessing = true;
+    document.getElementById('update-btn').disabled = true;
+    document.getElementById('reset-btn').disabled = true;
+    document.getElementById('progress-container').style.display = 'block';
+    document.getElementById('progress-fill').style.width = '0%';
+    document.getElementById('progress-fill').textContent = '';
+    document.getElementById('progress-message').textContent = 'Starting update...';
+
+    try {
+        const response = await fetch('/api/update', { method: 'POST' });
+        if (response.ok) {
+            statusCheckInterval = setInterval(checkStatus, 500);
+        } else {
+            showAlert('Failed to start update', 'error');
+            isProcessing = false;
+            document.getElementById('update-btn').disabled = false;
+            document.getElementById('reset-btn').disabled = false;
+            document.getElementById('progress-container').style.display = 'none';
+        }
+    } catch (error) {
+        showAlert('Error: ' + error.message, 'error');
+        isProcessing = false;
+        document.getElementById('update-btn').disabled = false;
+        document.getElementById('reset-btn').disabled = false;
+        document.getElementById('progress-container').style.display = 'none';
+    }
+}
+
+async function resetData() {
+    if (isProcessing) return;
+
+    if (!confirm('This will delete all data and reload everything from Strava. Continue?')) {
+        return;
+    }
+
+    // Show progress immediately
+    isProcessing = true;
+    document.getElementById('update-btn').disabled = true;
+    document.getElementById('reset-btn').disabled = true;
+    document.getElementById('progress-container').style.display = 'block';
+    document.getElementById('progress-fill').style.width = '0%';
+    document.getElementById('progress-fill').textContent = '';
+    document.getElementById('progress-message').textContent = 'Starting reset...';
+
+    try {
+        const response = await fetch('/api/reset', { method: 'POST' });
+        if (response.ok) {
+            statusCheckInterval = setInterval(checkStatus, 500);
+        } else {
+            showAlert('Failed to start reset', 'error');
+            isProcessing = false;
+            document.getElementById('update-btn').disabled = false;
+            document.getElementById('reset-btn').disabled = false;
+            document.getElementById('progress-container').style.display = 'none';
+        }
+    } catch (error) {
+        showAlert('Error: ' + error.message, 'error');
+        isProcessing = false;
+        document.getElementById('update-btn').disabled = false;
+        document.getElementById('reset-btn').disabled = false;
+        document.getElementById('progress-container').style.display = 'none';
+    }
+}
+
+
+async function checkStatus() {
+    try {
+        const response = await fetch('/api/status');
+        const status = await response.json();
+
+        if (status.is_processing) {
+            let percentage;
+            let progressText;
+
+            if (status.total > 0) {
+                // Known total - show percentage and fraction
+                percentage = Math.round((status.progress / status.total) * 100);
+                progressText = `${status.stage}: ${status.progress} / ${status.total}`;
+            } else {
+                // Unknown total - show message instead
+                percentage = 0;
+                progressText = status.message || `${status.stage}: ${status.progress} fetched...`;
+            }
+
+            document.getElementById('progress-fill').style.width = percentage + '%';
+            document.getElementById('progress-fill').textContent = percentage > 0 ? percentage + '%' : '';
+            document.getElementById('progress-message').textContent = progressText;
+        } else {
+            clearInterval(statusCheckInterval);
+            isProcessing = false;
+
+            document.getElementById('update-btn').disabled = false;
+            document.getElementById('reset-btn').disabled = false;
+
+            if (status.stage === 'Complete') {
+                showAlert(status.message, 'success');
+                setTimeout(() => {
+                    window.location.reload();
+                }, 2000);
+            } else if (status.stage === 'Error') {
+                showAlert('Error: ' + status.message, 'error');
+                document.getElementById('progress-container').style.display = 'none';
+            }
+        }
+    } catch (error) {
+        console.error('Status check failed:', error);
+    }
+}
+
+function showAlert(message, type) {
+    const alertDiv = document.createElement('div');
+    alertDiv.className = 'alert alert-' + type;
+    alertDiv.textContent = message;
+
+    const container = document.getElementById('alert-container');
+    container.innerHTML = '';
+    container.appendChild(alertDiv);
+
+    setTimeout(() => {
+        alertDiv.remove();
+    }, 5000);
+}
+
+async function loadRegions(level = 'lau') {
+    try {
+        const response = await fetch(`/api/regions?level=${level}`);
+        const regions = await response.json();
+
+        const tbody = document.getElementById('regions-tbody');
+        if (!tbody) return;
+
+        // Update region count
+        const regionsCount = document.getElementById('regions-count');
+        if (regionsCount) {
+            regionsCount.textContent = regions.length;
+        }
+
+        if (regions.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="4" style="text-align: center;">No regions found</td></tr>';
+            return;
+        }
+
+        tbody.innerHTML = regions.map(region => `
+            <tr>
+                <td>${region.region_name || region.name || 'Unknown'}</td>
+                <td>${region.country_code || 'Unknown'}</td>
+                <td>${region.activity_count || 0}</td>
+                <td>${region.first_visited ? new Date(region.first_visited).toLocaleDateString() : 'Unknown'}</td>
+            </tr>
+        `).join('');
+    } catch (error) {
+        console.error('Failed to load regions:', error);
+    }
+}
+
+let sortDirection = {};
+let currentLevel = 'lau';
+
+function switchLevel(level) {
+    currentLevel = level;
+
+    // Update active tab
+    document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
+    event.target.classList.add('active');
+
+    // Show loading indicator
+    const mapLoading = document.getElementById('map-loading');
+    if (mapLoading) {
+        mapLoading.classList.remove('hidden');
+    }
+
+    // Update map iframe
+    const mapFrame = document.getElementById('activity-map');
+    const timestamp = Date.now();
+    mapFrame.src = `/static/map_${level}.html?t=${timestamp}`;
+
+    // Update title and level name
+    const levelTitle = level === 'lau' ? 'LAU' : `NUTS ${level}`;
+    document.getElementById('level-title').textContent = levelTitle;
+    const levelName = document.getElementById('level-name');
+    if (levelName) {
+        levelName.textContent = levelTitle;
+    }
+
+    // Load regions for this level
+    loadRegions(level);
+}
+
+function hideMapLoading() {
+    const mapLoading = document.getElementById('map-loading');
+    if (mapLoading) {
+        mapLoading.classList.add('hidden');
+    }
+}
+
+function sortTable(columnIndex, type) {
+    const table = document.getElementById('regions-table');
+    const tbody = table.querySelector('tbody');
+    const rows = Array.from(tbody.querySelectorAll('tr'));
+
+    // Toggle sort direction
+    const currentDirection = sortDirection[columnIndex] || 'asc';
+    const newDirection = currentDirection === 'asc' ? 'desc' : 'asc';
+    sortDirection[columnIndex] = newDirection;
+
+    // Update header classes
+    table.querySelectorAll('th').forEach((th, idx) => {
+        th.classList.remove('sort-asc', 'sort-desc');
+        if (idx === columnIndex) {
+            th.classList.add(newDirection === 'asc' ? 'sort-asc' : 'sort-desc');
+        }
+    });
+
+    // Sort rows
+    rows.sort((a, b) => {
+        const aValue = a.cells[columnIndex].textContent.trim();
+        const bValue = b.cells[columnIndex].textContent.trim();
+
+        let comparison = 0;
+
+        if (type === 'number') {
+            comparison = parseInt(aValue) - parseInt(bValue);
+        } else if (type === 'date') {
+            const aDate = aValue === 'Unknown' ? new Date(0) : new Date(aValue);
+            const bDate = bValue === 'Unknown' ? new Date(0) : new Date(bValue);
+            comparison = aDate - bDate;
+        } else {
+            comparison = aValue.localeCompare(bValue);
+        }
+
+        return newDirection === 'asc' ? comparison : -comparison;
+    });
+
+    // Re-append sorted rows
+    rows.forEach(row => tbody.appendChild(row));
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    loadRegions();
+
+    // Auto-start processing if needed
+    {% if should_auto_process %}
+    console.log('Auto-starting processing for incomplete activities...');
+    // Small delay to let the page render first
+    setTimeout(() => {
+        updateActivities();
+    }, 500);
+    {% endif %}
+});
+</script>
+{% endblock %}

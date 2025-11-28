@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+
+{% block title %}Setup - Strava LAU Mapper{% endblock %}
+
+{% block content %}
+<div id="setup-content">
+    <h2 style="margin-bottom: 20px; color: #333;">Initial Setup</h2>
+
+    <p style="margin-bottom: 20px; color: #666;">
+        To get started, you need to create a Strava API application and authorize it to access your activities.
+    </p>
+
+    <div class="info-box">
+        <h3 style="margin-bottom: 10px;">How to create a Strava API application:</h3>
+        <ol style="margin-left: 20px; line-height: 1.8;">
+            <li>Go to <a href="https://www.strava.com/settings/api" target="_blank">https://www.strava.com/settings/api</a></li>
+            <li>Create a new application</li>
+            <li>Set the <strong>Authorization Callback Domain</strong> to: <code>localhost</code></li>
+            <li>Copy your <strong>Client ID</strong> and <strong>Client Secret</strong></li>
+            <li>Paste them below</li>
+        </ol>
+    </div>
+
+    <form id="credentials-form">
+        <div class="form-group">
+            <label for="client_id">Client ID:</label>
+            <input type="text" id="client_id" name="client_id" required placeholder="Enter your Strava Client ID">
+        </div>
+
+        <div class="form-group">
+            <label for="client_secret">Client Secret:</label>
+            <input type="text" id="client_secret" name="client_secret" required placeholder="Enter your Strava Client Secret">
+        </div>
+
+        <button type="submit">Save and Authorize</button>
+    </form>
+
+    <div id="error-message" class="alert alert-error" style="display: none;"></div>
+</div>
+
+<script>
+document.getElementById('credentials-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    const clientId = document.getElementById('client_id').value.trim();
+    const clientSecret = document.getElementById('client_secret').value.trim();
+    const errorDiv = document.getElementById('error-message');
+
+    if (!clientId || !clientSecret) {
+        errorDiv.textContent = 'Please fill in both Client ID and Client Secret';
+        errorDiv.style.display = 'block';
+        return;
+    }
+
+    errorDiv.style.display = 'none';
+
+    try {
+        const response = await fetch('/api/save-credentials', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                client_id: clientId,
+                client_secret: clientSecret
+            })
+        });
+
+        if (response.ok) {
+            // Redirect to OAuth authorization
+            window.location.href = '/oauth/authorize';
+        } else {
+            const data = await response.json();
+            errorDiv.textContent = data.error || 'Failed to save credentials';
+            errorDiv.style.display = 'block';
+        }
+    } catch (error) {
+        errorDiv.textContent = 'An error occurred: ' + error.message;
+        errorDiv.style.display = 'block';
+    }
+});
+</script>
+{% endblock %}
