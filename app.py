@@ -367,7 +367,7 @@ def open_browser():
 def main():
     """Initialize and run the application."""
     print("="*60)
-    print("STRAVA LAU MAPPER - STARTUP")
+    print("STRAVA GO NUTS - STARTUP")
     print("="*60)
 
     # Step 1: Initialize database schema
@@ -389,7 +389,7 @@ def main():
     print("\n" + "="*60)
     print("STARTUP COMPLETE")
     print("="*60)
-    print("\nStarting Strava LAU Mapper web server...")
+    print("\nStarting Strava GO NUTS web server...")
     print("Opening browser at http://localhost:5000")
     print("\nPress Ctrl+C to stop the server\n")
 

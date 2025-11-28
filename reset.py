@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Reset script for Strava LAU Mapper
+Reset script for Strava GO NUTS
 Provides options to reset different types of data.
 """
 
@@ -13,7 +13,7 @@ import sqlite3
 def show_menu():
     """Display reset options menu."""
     print("=" * 60)
-    print("  STRAVA LAU MAPPER - RESET TOOL")
+    print("  STRAVA GO NUTS MAPPER - RESET TOOL")
     print("=" * 60)
     print("\nWhat would you like to reset?\n")
     print("  1. All data (complete reset)")
