@@ -1,0 +1,40 @@
+# Database
+strava_lau.db
+strava_lau.db-journal
+
+# Cached data
+lau_data/
+nuts_data/
+
+# Claude Code
+.claude/
+
+# Generated maps
+static/map.png
+static/map.html
+static/map_*.html
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+.venv
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
