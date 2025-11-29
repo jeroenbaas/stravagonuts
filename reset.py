@@ -35,10 +35,10 @@ def delete_file(filepath, description):
     if os.path.exists(filepath):
         try:
             os.remove(filepath)
-            print(f"✓ Deleted {description}: {filepath}")
+            print(f"[OK] Deleted {description}: {filepath}")
             return True
         except Exception as e:
-            print(f"✗ Failed to delete {description}: {e}")
+            print(f"[FAIL] Failed to delete {description}: {e}")
             return False
     else:
         print(f"- {description} not found (already clean)")
@@ -50,10 +50,10 @@ def delete_directory(dirpath, description):
     if os.path.exists(dirpath):
         try:
             shutil.rmtree(dirpath)
-            print(f"✓ Deleted {description}: {dirpath}")
+            print(f"[OK] Deleted {description}: {dirpath}")
             return True
         except Exception as e:
-            print(f"✗ Failed to delete {description}: {e}")
+            print(f"[FAIL] Failed to delete {description}: {e}")
             return False
     else:
         print(f"- {description} not found (already clean)")
@@ -90,10 +90,10 @@ def clear_user_data_from_db():
         conn.commit()
         conn.close()
 
-        print("✓ Cleared user data from database (region data preserved)")
+        print("[OK] Cleared user data from database (region data preserved)")
         return True
     except Exception as e:
-        print(f"✗ Failed to clear user data: {e}")
+        print(f"[FAIL] Failed to clear user data: {e}")
         return False
 
 
@@ -124,10 +124,10 @@ def clear_region_data_from_db():
         conn.commit()
         conn.close()
 
-        print("✓ Cleared region database (will reload on next startup)")
+        print("[OK] Cleared region database (will reload on next startup)")
         return True
     except Exception as e:
-        print(f"✗ Failed to clear region data: {e}")
+        print(f"[FAIL] Failed to clear region data: {e}")
         return False
 
 
@@ -286,16 +286,16 @@ def main():
         print("\nReset cancelled.")
         sys.exit(0)
     else:
-        print("\n✗ Invalid choice. Exiting.")
+        print("\n[FAIL] Invalid choice. Exiting.")
         sys.exit(1)
 
     print("\n" + "=" * 60)
     if success:
-        print("✓ Reset complete!")
+        print("[OK] Reset complete!")
         print("\nYou can now run the app:")
         print("  python app.py")
     else:
-        print("⚠ Reset completed with some errors (see above)")
+        print("[WARN] Reset completed with some errors (see above)")
         print("  Some files may need to be manually deleted")
     print("=" * 60)
 

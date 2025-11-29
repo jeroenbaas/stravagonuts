@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Strava GO NUTS{% endblock %}</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: #f5f5f5;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+
+        header {
+            background: #FC4C02;
+            color: white;
+            padding: 30px 40px;
+            text-align: center;
+            border-bottom: 1px solid #e84118;
+        }
+
+        header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        header p {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+
+        .content {
+            padding: 40px;
+        }
+
+        button {
+            background: #1a73e8;
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            font-size: 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-weight: 500;
+        }
+
+        button:hover {
+            background: #1765cc;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+        }
+
+        button:disabled {
+            background: #dadce0;
+            color: #80868b;
+            cursor: not-allowed;
+        }
+
+        button.danger {
+            background: #d93025;
+        }
+
+        button.danger:hover {
+            background: #c5221f;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+        }
+
+        input[type="text"] {
+            width: 100%;
+            padding: 12px;
+            font-size: 16px;
+            border: 2px solid #e0e0e0;
+            border-radius: 6px;
+            transition: border-color 0.3s ease;
+        }
+
+        input[type="text"]:focus {
+            outline: none;
+            border-color: #1a73e8;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #333;
+        }
+
+        .info-box {
+            background: #e8f0fe;
+            border-left: 4px solid #1a73e8;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 6px;
+        }
+
+        .info-box a {
+            color: #1a73e8;
+            font-weight: 600;
+        }
+
+        .progress-container {
+            margin: 30px 0;
+            display: none;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 30px;
+            background: #e0e0e0;
+            border-radius: 15px;
+            overflow: hidden;
+            margin-bottom: 10px;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: #1a73e8;
+            width: 0%;
+            transition: width 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 600;
+        }
+
+        .progress-message {
+            text-align: center;
+            font-size: 14px;
+            color: #666;
+        }
+
+        .alert {
+            padding: 15px;
+            border-radius: 6px;
+            margin: 20px 0;
+        }
+
+        .alert-error {
+            background: #fee;
+            color: #c00;
+            border: 1px solid #fcc;
+        }
+
+        .alert-success {
+            background: #efe;
+            color: #060;
+            border: 1px solid #cfc;
+        }
+    </style>
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Strava GO NUTS</h1>
+            <p>Map your Strava activities and discover the regions you've explored</p>
+        </header>
+        <div class="content">
+            {% block content %}{% endblock %}
+        </div>
+        <footer style="text-align: center; padding: 20px; color: #5f6368; font-size: 0.85em; border-top: 1px solid #e0e0e0; margin-top: 40px;">
+            <p style="margin-bottom: 10px;">
+                <strong>Geospatial Data Attribution:</strong><br>
+                © European Commission – Eurostat / GISCO, and © EuroGeographics where applicable.
+            </p>
+            <p style="margin: 0; font-size: 0.9em;">
+                Administrative boundary data (NUTS &amp; LAU) provided by
+                <a href="https://ec.europa.eu/eurostat/web/gisco" target="_blank" style="color: #1a73e8;">Eurostat/GISCO</a>.
+                See <a href="https://github.com/jeroenbaas/stravagonuts/blob/master/LICENSE" target="_blank" style="color: #1a73e8;">LICENSE</a> for full terms.
+            </p>
+        </footer>
+    </div>
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

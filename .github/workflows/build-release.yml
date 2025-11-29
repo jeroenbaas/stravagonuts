@@ -1,0 +1,153 @@
+name: Build Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Release version (e.g., v1.0.0)'
+        required: true
+        type: string
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pyinstaller
+
+      - name: Build with PyInstaller
+        run: pyinstaller build.spec
+
+      - name: Rename executable
+        run: mv dist/StravaGoNuts.exe dist/StravaGoNuts-Windows-${{ inputs.version }}.exe
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-executable
+          path: dist/StravaGoNuts-Windows-${{ inputs.version }}.exe
+
+  build-macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pyinstaller
+
+      - name: Build with PyInstaller
+        run: pyinstaller build.spec
+
+      - name: Create ZIP
+        run: |
+          cd dist
+          zip -r StravaGoNuts-macOS-${{ inputs.version }}.zip StravaGoNuts
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-executable
+          path: dist/StravaGoNuts-macOS-${{ inputs.version }}.zip
+
+  build-regions-db:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Generate regions database
+        run: |
+          python -c "
+          from stravagonuts.region_database_init import initialize_region_database
+          if initialize_region_database(force=True):
+              print('[OK] Regions database created')
+          else:
+              exit(1)
+          "
+
+      - name: Upload regions.db
+        uses: actions/upload-artifact@v4
+        with:
+          name: regions-database
+          path: databases/regions.db
+
+  create-release:
+    needs: [build-windows, build-macos, build-regions-db]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ inputs.version }}
+          name: Release ${{ inputs.version }}
+          draft: false
+          prerelease: false
+          files: |
+            windows-executable/StravaGoNuts-Windows-${{ inputs.version }}.exe
+            macos-executable/StravaGoNuts-macOS-${{ inputs.version }}.zip
+            regions-database/regions.db
+          body: |
+            # Strava GO NUTS ${{ inputs.version }}
+
+            Map your Strava activities across European administrative regions (LAU and NUTS levels).
+
+            ## Installation
+
+            ### Windows
+            1. Download `StravaGoNuts-Windows-${{ inputs.version }}.exe`
+            2. Run the executable
+            3. On first run, the region database (~144MB) will be downloaded automatically
+
+            ### macOS
+            1. Download `StravaGoNuts-macOS-${{ inputs.version }}.zip`
+            2. Extract and run `StravaGoNuts`
+            3. You may need to right-click and select "Open" to bypass Gatekeeper
+            4. On first run, the region database (~144MB) will be downloaded automatically
+
+            ## Manual Database Download
+
+            If automatic download fails, download `regions.db` and place it in:
+            - Windows: `%APPDATA%\StravaGoNuts\databases\regions.db`
+            - macOS: `~/Library/Application Support/StravaGoNuts/databases/regions.db`
+
+            ## What's New
+
+            [Add release notes here]
+
+            ## Data Attribution
+
+            Administrative boundary data: © European Commission – Eurostat / GISCO, © EuroGeographics

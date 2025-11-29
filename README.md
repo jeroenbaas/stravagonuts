@@ -86,4 +86,21 @@ Options:
 
 ## License
 
-MIT
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+### Geospatial Data Attribution
+
+**Important:** The administrative boundary data (NUTS & LAU) is **NOT** covered by the MIT license.
+
+The geospatial datasets used in this project are sourced from:
+- **© European Commission – Eurostat / GISCO**
+- **© EuroGeographics** (where applicable)
+
+These datasets are redistributed under the terms specified by their original providers. See the [LICENSE](LICENSE) file for complete terms and conditions regarding the use, modification, and redistribution of boundary data.
+
+**Required Attribution:**
+> © European Commission – Eurostat / GISCO, and © EuroGeographics where applicable.
+
+For full legal terms, consult:
+- [Eurostat Copyright Policy](https://ec.europa.eu/eurostat/about/policies/copyright)
+- [GISCO Data Policy](https://ec.europa.eu/eurostat/web/gisco/geodata/reference-data)
