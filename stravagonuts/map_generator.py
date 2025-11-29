@@ -200,11 +200,18 @@ def generate_map(status_dict=None):
 
     # Link activities to LAU regions (regions already exist from startup)
     print("[MAP] Linking activities to LAU regions...")
+    total_links = 0
     for line_idx, lau_indices in activity_lau_map.items():
         activity_id = activity_ids[line_idx]
         for lau_idx in lau_indices:
             lau_row = lau.loc[lau_idx]
-            link_activity_lau(activity_id, lau_row["LAU_ID"])
+            try:
+                link_activity_lau(activity_id, lau_row["LAU_ID"])
+                total_links += 1
+            except Exception as e:
+                print(f"[MAP] ERROR linking activity {activity_id} to LAU {lau_row['LAU_ID']}: {e}")
+
+    print(f"[MAP] Successfully created {total_links} activity-LAU links")
 
     # Update first_visited dates based on earliest activity
     print("[MAP] Updating first visited dates...")

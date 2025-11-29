@@ -466,6 +466,11 @@ let currentCountryFilter = '';
 let currentLevel = 'lau';
 let totalCounts = {};
 
+// Debug function to log isProcessing state
+function logProcessingState(location) {
+    console.log(`[STATE] isProcessing = ${isProcessing} at ${location}`);
+}
+
 function toggleMenu() {
     const dropdown = document.getElementById('menu-dropdown');
     const icon = document.getElementById('menu-icon');
@@ -487,16 +492,24 @@ document.addEventListener('click', function(event) {
 });
 
 async function updateActivities() {
-    if (isProcessing) return;
+    console.log('[UPDATE] updateActivities called');
+    if (isProcessing) {
+        console.log('[UPDATE] Already processing, ignoring');
+        alert('⏳ Update Already Running\n\nAn update or reset operation is currently in progress. Please wait for it to complete.\n\nYou can see the progress in the progress bar below.');
+        return;
+    }
 
     // Close menu
     const dropdown = document.getElementById('menu-dropdown');
     if (dropdown) dropdown.classList.remove('open');
 
     // Show progress immediately
+    console.log('[UPDATE] Starting update process');
     isProcessing = true;
+    logProcessingState('updateActivities - set to true');
     document.getElementById('update-btn-menu').disabled = true;
-    document.getElementById('reset-btn-menu').disabled = true;
+    document.getElementById('reset-activities-btn').disabled = true;
+    document.getElementById('reset-app-btn').disabled = true;
     document.getElementById('progress-container').style.display = 'block';
     document.getElementById('progress-fill').style.width = '0%';
     document.getElementById('progress-fill').textContent = '';
@@ -510,22 +523,31 @@ async function updateActivities() {
             showAlert('Failed to start update', 'error');
             isProcessing = false;
             document.getElementById('update-btn-menu').disabled = false;
-            document.getElementById('reset-btn-menu').disabled = false;
+            document.getElementById('reset-activities-btn').disabled = false;
+            document.getElementById('reset-app-btn').disabled = false;
             document.getElementById('progress-container').style.display = 'none';
         }
     } catch (error) {
         showAlert('Error: ' + error.message, 'error');
         isProcessing = false;
         document.getElementById('update-btn-menu').disabled = false;
-        document.getElementById('reset-btn-menu').disabled = false;
+        document.getElementById('reset-activities-btn').disabled = false;
+        document.getElementById('reset-app-btn').disabled = false;
         document.getElementById('progress-container').style.display = 'none';
     }
 }
 
 async function resetActivities() {
     console.log('[RESET] resetActivities called');
+    logProcessingState('resetActivities entry');
     if (isProcessing) {
-        console.log('[RESET] Already processing, ignoring');
+        console.log('[RESET] Already processing, showing override dialog');
+        const override = confirm('⏳ Operation In Progress\n\nAn update or reset is currently running in the background.\n\nOptions:\n1. Click "Cancel" to wait for it to finish\n2. Click "OK" to reload the page and try again (this will cancel the current operation)');
+
+        if (override) {
+            console.log('[RESET] User chose to reload page');
+            window.location.reload();
+        }
         return;
     }
 
@@ -574,8 +596,15 @@ async function resetActivities() {
 
 async function resetApp() {
     console.log('[RESET APP] resetApp called');
+    logProcessingState('resetApp entry');
     if (isProcessing) {
-        console.log('[RESET APP] Already processing, ignoring');
+        console.log('[RESET APP] Already processing, showing override dialog');
+        const override = confirm('⏳ Operation In Progress\n\nAn update or reset is currently running in the background.\n\nOptions:\n1. Click "Cancel" to wait for it to finish\n2. Click "OK" to reload the page and try again (this will cancel the current operation)');
+
+        if (override) {
+            console.log('[RESET APP] User chose to reload page');
+            window.location.reload();
+        }
         return;
     }
 
@@ -656,6 +685,7 @@ async function checkStatus() {
         } else {
             clearInterval(statusCheckInterval);
             isProcessing = false;
+            logProcessingState('checkStatus - processing complete');
 
             document.getElementById('update-btn-menu').disabled = false;
             document.getElementById('reset-activities-btn').disabled = false;
@@ -898,6 +928,9 @@ function sortTable(columnIndex, type) {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
+    console.log('[INIT] Page loaded');
+    logProcessingState('DOMContentLoaded');
+
     // Initialize gauge
     initializeGauge();
 
@@ -947,9 +980,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Auto-start processing if needed
     {% if should_auto_process %}
-    console.log('Auto-starting processing for incomplete activities...');
+    console.log('[AUTO-PROCESS] Auto-processing is enabled');
+    console.log('[AUTO-PROCESS] activities_not_fetched: {{ activities_not_fetched }}');
+    console.log('[AUTO-PROCESS] activities_without_links: {{ activities_without_links }}');
+    console.log('[AUTO-PROCESS] activities_with_streams: {{ activities_with_streams }}');
+    console.log('[AUTO-PROCESS] Calling updateActivities() in 500ms...');
+
+    // Show a notice that auto-processing is starting
+    showAlert('Auto-processing started - updating activities and maps in the background...', 'success');
+
     // Small delay to let the page render first
     setTimeout(() => {
+        console.log('[AUTO-PROCESS] Now calling updateActivities()');
         updateActivities();
     }, 500);
     {% endif %}
