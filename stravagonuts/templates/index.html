@@ -632,17 +632,24 @@ async function updateGauge(level, country = '') {
     arc.style.strokeDashoffset = offset;
 }
 
-function applyCountryFilter() {
+async function applyCountryFilter() {
     const select = document.getElementById('country-filter');
     currentCountryFilter = select.value;
 
     // Reload current level with filter
-    loadRegions(currentLevel, currentCountryFilter);
+    await loadRegions(currentLevel, currentCountryFilter);
 
-    // Update map (reload iframe)
+    // Update map (reload iframe with country parameter)
     const mapFrame = document.getElementById('activity-map');
     const timestamp = Date.now();
-    mapFrame.src = `/static/map_${currentLevel}.html?t=${timestamp}`;
+    const countryParam = currentCountryFilter ? `&country=${currentCountryFilter}` : '';
+    mapFrame.src = `/static/map_${currentLevel}.html?t=${timestamp}${countryParam}`;
+
+    // Show loading indicator
+    const mapLoading = document.getElementById('map-loading');
+    if (mapLoading) {
+        mapLoading.classList.remove('hidden');
+    }
 }
 
 let sortDirection = {};

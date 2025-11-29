@@ -381,17 +381,28 @@ def get_totals():
 
 @app.route("/static/map_<level>.html")
 def serve_map(level):
-    """Serve map HTML file, generating it if missing."""
-    # Use absolute path relative to this file
-    map_path = os.path.join(os.path.dirname(__file__), 'static', f'map_{level}.html')
+    """Serve map HTML file, generating it if missing or if country filter applied."""
+    country = request.args.get('country', '').upper()
 
-    # Check if map exists
-    if os.path.exists(map_path):
+    # Use absolute path relative to this file
+    if country:
+        # Country-filtered map - always generate on demand
+        map_filename = f'map_{level}_{country}.html'
+    else:
+        # Standard map
+        map_filename = f'map_{level}.html'
+
+    map_path = os.path.join(os.path.dirname(__file__), 'static', map_filename)
+
+    # For country-filtered maps, always regenerate to ensure fresh data
+    # For standard maps, check if exists first
+    if not country and os.path.exists(map_path):
         from flask import send_file
         return send_file(map_path)
 
-    # Map doesn't exist - generate it
-    print(f"[MAP] Map for level {level} not found, generating on-demand...")
+    # Map doesn't exist or is country-filtered - generate it
+    filter_msg = f" (country: {country})" if country else ""
+    print(f"[MAP] Map for level {level}{filter_msg} generating on-demand...")
 
     # Check if we have any activities with GPS data
     activities_with_streams = get_activities_with_streams_count()
@@ -412,34 +423,35 @@ def serve_map(level):
     # Generate ONLY the requested map (not all maps)
     try:
         from .map_generator import generate_single_level_map
-        generate_single_level_map(level)
+        generate_single_level_map(level, country_code=country if country else None)
 
         # Check if map was generated
         if os.path.exists(map_path):
             from flask import send_file
 
-            # Kick off background generation for other levels
-            import threading
-            def generate_other_maps():
-                try:
-                    print("[MAP] Background generation of other map levels starting...")
-                    all_levels = ['lau', 0, 1, 2, 3]
-                    for other_level in all_levels:
-                        # Convert level to string for comparison
-                        level_str = str(level)
-                        other_level_str = str(other_level)
+            # Only kick off background generation for non-filtered maps
+            if not country:
+                import threading
+                def generate_other_maps():
+                    try:
+                        print("[MAP] Background generation of other map levels starting...")
+                        all_levels = ['lau', 0, 1, 2, 3]
+                        for other_level in all_levels:
+                            # Convert level to string for comparison
+                            level_str = str(level)
+                            other_level_str = str(other_level)
 
-                        if level_str != other_level_str:
-                            other_map_path = os.path.join(os.path.dirname(__file__), 'static', f'map_{other_level}.html')
-                            if not os.path.exists(other_map_path):
-                                print(f"[MAP] Generating map for level {other_level} in background...")
-                                generate_single_level_map(other_level)
-                    print("[MAP] Background map generation complete")
-                except Exception as e:
-                    print(f"[MAP] Background generation error: {e}")
+                            if level_str != other_level_str:
+                                other_map_path = os.path.join(os.path.dirname(__file__), 'static', f'map_{other_level}.html')
+                                if not os.path.exists(other_map_path):
+                                    print(f"[MAP] Generating map for level {other_level} in background...")
+                                    generate_single_level_map(other_level)
+                        print("[MAP] Background map generation complete")
+                    except Exception as e:
+                        print(f"[MAP] Background generation error: {e}")
 
-            thread = threading.Thread(target=generate_other_maps, daemon=True)
-            thread.start()
+                thread = threading.Thread(target=generate_other_maps, daemon=True)
+                thread.start()
 
             return send_file(map_path)
         else:

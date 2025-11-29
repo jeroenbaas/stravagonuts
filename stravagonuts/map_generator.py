@@ -402,13 +402,15 @@ def process_nuts_regions(activity_ids, activity_lau_map, lau_gdf):
     print("[MAP] NUTS processing complete!")
 
 
-def generate_single_level_map(level):
+def generate_single_level_map(level, country_code=None):
     """Generate a single map for the specified level only.
 
     Args:
         level: 'lau', 0, 1, 2, or 3
+        country_code: Optional NUTS0 country code to filter by
     """
-    print(f"[MAP] Generating single map for level: {level}")
+    filter_msg = f" (country: {country_code})" if country_code else ""
+    print(f"[MAP] Generating single map for level: {level}{filter_msg}")
 
     # Get all activities with streams
     activities = get_all_activities_with_streams()
@@ -435,30 +437,33 @@ def generate_single_level_map(level):
     import os
     static_dir = os.path.join(os.path.dirname(__file__), 'static')
     os.makedirs(static_dir, exist_ok=True)
-    map_path = os.path.join(static_dir, f"map_{level}.html")
-    print(f"[MAP] Generating map for level {level}...")
-    generate_level_map(level, linestrings, map_path)
+
+    # Filename includes country code if filtered
+    filename = f"map_{level}_{country_code}.html" if country_code else f"map_{level}.html"
+    map_path = os.path.join(static_dir, filename)
+
+    print(f"[MAP] Generating map for level {level}{filter_msg}...")
+    generate_level_map(level, linestrings, map_path, country_code=country_code)
     print(f"[MAP] Map saved to {map_path}")
 
 
-def generate_level_map(level, linestrings, save_path):
+def generate_level_map(level, linestrings, save_path, country_code=None):
     """Generate interactive map for a specific administrative level.
 
     Args:
         level: 'lau', 0, 1, 2, or 3
         linestrings: List of activity linestrings
         save_path: Where to save the HTML map
+        country_code: Optional NUTS0 country code to filter by
     """
-    print(f"[MAP] Generating interactive map for level: {level}")
+    filter_msg = f" (country: {country_code})" if country_code else ""
+    print(f"[MAP] Generating interactive map for level: {level}{filter_msg}")
 
     from .database import get_db
     from shapely import wkt
 
     if level == 'lau':
         # Get visited LAU regions from database WITH geometry
-        from .database import get_all_lau_regions
-        visited = get_all_lau_regions()
-
         # Build GeoDataFrame from database
         geometries = []
         names = []
@@ -466,11 +471,18 @@ def generate_level_map(level, linestrings, save_path):
 
         with get_db() as conn:
             cursor = conn.cursor()
-            cursor.execute("""
+            query = """
                 SELECT lau_id, name, geometry
                 FROM regions.lau_regions
                 WHERE lau_id IN (SELECT DISTINCT lau_id FROM activity_lau)
-            """)
+            """
+            params = ()
+
+            if country_code:
+                query += " AND country_code = ?"
+                params = (country_code,)
+
+            cursor.execute(query, params)
             for row in cursor.fetchall():
                 if row['geometry']:
                     geometries.append(wkt.loads(row['geometry']))
@@ -487,9 +499,6 @@ def generate_level_map(level, linestrings, save_path):
         code_col = 'LAU_ID'
     else:
         # Get visited NUTS regions from database WITH geometry
-        from .database import get_nuts_regions_by_level
-        visited = get_nuts_regions_by_level(level)
-
         # Build GeoDataFrame from database
         geometries = []
         names = []
@@ -497,11 +506,18 @@ def generate_level_map(level, linestrings, save_path):
 
         with get_db() as conn:
             cursor = conn.cursor()
-            cursor.execute("""
+            query = """
                 SELECT nuts_code, name, geometry
                 FROM regions.nuts_regions
                 WHERE level = ? AND nuts_code IN (SELECT DISTINCT nuts_code FROM activity_nuts)
-            """, (level,))
+            """
+            params = [level]
+
+            if country_code:
+                query += " AND country_code = ?"
+                params.append(country_code)
+
+            cursor.execute(query, tuple(params))
             for row in cursor.fetchall():
                 if row['geometry']:
                     geometries.append(wkt.loads(row['geometry']))
