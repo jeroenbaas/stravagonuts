@@ -12,6 +12,13 @@ import os
 # Add current directory to path for imports
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
+# Fix SSL certificate verification for PyInstaller executables
+if getattr(sys, 'frozen', False):
+    # Running as PyInstaller executable
+    import certifi
+    os.environ['SSL_CERT_FILE'] = certifi.where()
+    os.environ['REQUESTS_CA_BUNDLE'] = certifi.where()
+
 from stravagonuts import create_app
 from stravagonuts.database import init_database, REGIONS_DB
 from stravagonuts.region_database_init import initialize_region_database

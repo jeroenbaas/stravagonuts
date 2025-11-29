@@ -1,6 +1,11 @@
 # -*- mode: python ; coding: utf-8 -*-
+import certifi
+import os
 
 block_cipher = None
+
+# Get certifi CA bundle path
+certifi_path = os.path.dirname(certifi.where())
 
 a = Analysis(
     ['run.py'],
@@ -9,8 +14,10 @@ a = Analysis(
     datas=[
         ('stravagonuts/templates', 'stravagonuts/templates'),
         ('stravagonuts/static', 'stravagonuts/static'),
+        (certifi.where(), 'certifi'),
     ],
     hiddenimports=[
+        'certifi',
         'shapely.geometry',
         'geopandas',
         'folium',
