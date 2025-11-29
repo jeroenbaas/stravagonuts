@@ -343,7 +343,7 @@ def get_all_lau_regions():
         cursor.execute("""
             SELECT regions.lau_regions.lau_id, name, country_code,
                    lau_first_visited.first_visited,
-                   COUNT(activity_id) as activity_count
+                   COUNT(DISTINCT activity_id) as activity_count
             FROM regions.lau_regions
             INNER JOIN activity_lau ON regions.lau_regions.lau_id = activity_lau.lau_id
             LEFT JOIN lau_first_visited ON regions.lau_regions.lau_id = lau_first_visited.lau_id
@@ -492,7 +492,7 @@ def get_all_lau_regions_filtered(country_code):
         cursor.execute("""
             SELECT regions.lau_regions.lau_id, name, country_code,
                    lau_first_visited.first_visited,
-                   COUNT(activity_id) as activity_count
+                   COUNT(DISTINCT activity_id) as activity_count
             FROM regions.lau_regions
             INNER JOIN activity_lau ON regions.lau_regions.lau_id = activity_lau.lau_id
             LEFT JOIN lau_first_visited ON regions.lau_regions.lau_id = lau_first_visited.lau_id
