@@ -78,8 +78,8 @@ def download_regions_db():
 
 def open_browser():
     """Open browser after short delay."""
-    time.sleep(1.5)
-    webbrowser.open("http://localhost:5000")
+    time.sleep(2.5)  # Longer delay to ensure server is ready
+    webbrowser.open("http://127.0.0.1:5000")
 
 
 def main():
@@ -114,7 +114,7 @@ def main():
     print("STARTUP COMPLETE")
     print("="*60)
     print("\nStarting Strava GO NUTS web server...")
-    print("Opening browser at http://localhost:5000")
+    print("Server will run at: http://127.0.0.1:5000")
     print("\nPress Ctrl+C to stop the server\n")
 
     # Suppress Flask request logging for /api/status to reduce console clutter
@@ -122,13 +122,28 @@ def main():
     log.setLevel(logging.ERROR)
 
     # Create Flask app
-    app = create_app()
+    try:
+        app = create_app()
+        print("[SERVER] Flask app created successfully")
+    except Exception as e:
+        print(f"[ERROR] Failed to create Flask app: {e}")
+        import traceback
+        traceback.print_exc()
+        return 1
 
     # Open browser in background thread
     threading.Thread(target=open_browser, daemon=True).start()
+    print("[SERVER] Browser will open in 2.5 seconds...")
 
-    # Run Flask app (localhost only - no external connections)
-    app.run(host="127.0.0.1", port=5000, debug=False)
+    # Run Flask app with error handling (localhost only - no external connections)
+    try:
+        print("[SERVER] Starting Flask server on 127.0.0.1:5000...")
+        app.run(host="127.0.0.1", port=5000, debug=False, use_reloader=False, threaded=True)
+    except Exception as e:
+        print(f"[ERROR] Flask server error: {e}")
+        import traceback
+        traceback.print_exc()
+        return 1
 
     return 0
 
