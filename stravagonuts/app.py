@@ -382,7 +382,8 @@ def get_totals():
 @app.route("/static/map_<level>.html")
 def serve_map(level):
     """Serve map HTML file, generating it if missing."""
-    map_path = f"stravagonuts/static/map_{level}.html"
+    # Use absolute path relative to this file
+    map_path = os.path.join(os.path.dirname(__file__), 'static', f'map_{level}.html')
 
     # Check if map exists
     if os.path.exists(map_path):
@@ -429,7 +430,7 @@ def serve_map(level):
                         other_level_str = str(other_level)
 
                         if level_str != other_level_str:
-                            other_map_path = f"stravagonuts/static/map_{other_level}.html"
+                            other_map_path = os.path.join(os.path.dirname(__file__), 'static', f'map_{other_level}.html')
                             if not os.path.exists(other_map_path):
                                 print(f"[MAP] Generating map for level {other_level} in background...")
                                 generate_single_level_map(other_level)
