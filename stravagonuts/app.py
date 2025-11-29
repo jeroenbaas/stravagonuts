@@ -6,7 +6,8 @@ from flask import Flask, render_template, request, jsonify, redirect, url_for, s
 from .database import (
     init_database, is_configured, get_setting, set_setting,
     get_activity_count, get_all_lau_regions, get_activities_with_streams_count,
-    get_activities_not_fetched_count, get_nuts_regions_by_level, clear_activities
+    get_activities_not_fetched_count, get_nuts_regions_by_level, clear_activities,
+    get_activities_without_region_links
 )
 from .strava_service import fetch_and_store_activities, process_activity_streams
 from .map_generator import generate_map
@@ -43,6 +44,7 @@ def index():
     activity_count = get_activity_count()
     activities_with_streams = get_activities_with_streams_count()
     activities_not_fetched = get_activities_not_fetched_count()
+    activities_without_links = get_activities_without_region_links()
     lau_regions = get_all_lau_regions()
 
     # Get athlete information
@@ -70,16 +72,19 @@ def index():
     # Check if we should auto-start processing
     # Auto-process if:
     # 1. Activities need GPS fetch attempt, OR
-    # 2. Maps are missing but we have activities with GPS data
+    # 2. Maps are missing but we have activities with GPS data, OR
+    # 3. Activities with GPS data are not linked to regions (recovery from crash)
     should_auto_process = (
-        (activities_not_fetched > 0 or maps_missing) and
+        (activities_not_fetched > 0 or maps_missing or activities_without_links > 0) and
         not processing_status["is_processing"]
     )
 
     if should_auto_process:
         if activities_not_fetched > 0:
             print(f"[INDEX] Auto-processing will be triggered: {activities_not_fetched} activities need GPS fetch attempt")
-        if maps_missing:
+        elif activities_without_links > 0:
+            print(f"[INDEX] Auto-processing will be triggered: {activities_without_links} activities with GPS data are not linked to regions")
+        elif maps_missing:
             print(f"[INDEX] Auto-processing will be triggered: Maps missing but {activities_with_streams} activities with GPS data found")
 
     return render_template(
@@ -87,6 +92,7 @@ def index():
         activity_count=activity_count,
         activities_with_streams=activities_with_streams,
         activities_not_fetched=activities_not_fetched,
+        activities_without_links=activities_without_links,
         lau_count=len(lau_regions),
         has_data=activity_count > 0,
         athlete_name=athlete_name,

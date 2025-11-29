@@ -377,6 +377,19 @@ def get_activities_not_fetched_count():
         return cursor.fetchone()["count"]
 
 
+def get_activities_without_region_links():
+    """Get activities that have streams but haven't been linked to any regions."""
+    with get_db() as conn:
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT COUNT(*) as count
+            FROM activities
+            WHERE has_streams = 1
+            AND id NOT IN (SELECT DISTINCT activity_id FROM activity_lau)
+        """)
+        return cursor.fetchone()["count"]
+
+
 def clear_all_data():
     """Clear all data from database (for complete reset)."""
     with get_db() as conn:
