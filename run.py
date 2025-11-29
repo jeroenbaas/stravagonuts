@@ -120,8 +120,8 @@ def main():
     # Open browser in background thread
     threading.Thread(target=open_browser, daemon=True).start()
 
-    # Run Flask app
-    app.run(host="0.0.0.0", port=5000, debug=False)
+    # Run Flask app (localhost only - no external connections)
+    app.run(host="127.0.0.1", port=5000, debug=False)
 
     return 0
 
