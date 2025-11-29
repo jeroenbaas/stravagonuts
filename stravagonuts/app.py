@@ -327,11 +327,14 @@ def get_regions():
 
     Query params:
         level: 'lau' (default), '0', '1', '2', or '3'
+        country: NUTS0 country code (optional filter)
     """
     level = request.args.get('level', 'lau').lower()
+    country = request.args.get('country', '').upper()
 
     if level == 'lau':
-        regions = get_all_lau_regions()
+        from .database import get_all_lau_regions_filtered
+        regions = get_all_lau_regions_filtered(country) if country else get_all_lau_regions()
         # Normalize keys for frontend
         for r in regions:
             r['code'] = r.get('lau_id')
@@ -342,7 +345,8 @@ def get_regions():
             if level_int not in [0, 1, 2, 3]:
                 return jsonify({"error": "Invalid level. Must be 'lau', 0, 1, 2, or 3"}), 400
 
-            regions = get_nuts_regions_by_level(level_int)
+            from .database import get_nuts_regions_by_level_filtered
+            regions = get_nuts_regions_by_level_filtered(level_int, country) if country else get_nuts_regions_by_level(level_int)
             # Normalize keys for frontend
             for r in regions:
                 r['code'] = r.get('nuts_code')
@@ -351,6 +355,28 @@ def get_regions():
             return jsonify({"error": "Invalid level parameter"}), 400
 
     return jsonify(regions)
+
+
+@app.route("/api/countries")
+def get_countries():
+    """Get list of NUTS0 countries with activities."""
+    from .database import get_visited_countries
+    countries = get_visited_countries()
+    return jsonify(countries)
+
+
+@app.route("/api/totals")
+def get_totals():
+    """Get total region counts for all levels.
+
+    Query params:
+        country: NUTS0 country code (optional filter)
+    """
+    country = request.args.get('country', '').upper()
+
+    from .database import get_total_regions_count
+    totals = get_total_regions_count(country if country else None)
+    return jsonify(totals)
 
 
 @app.route("/map")

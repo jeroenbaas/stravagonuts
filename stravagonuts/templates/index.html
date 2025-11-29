@@ -203,6 +203,95 @@
         margin-bottom: 20px;
         color: #666;
     }
+
+    .gauge-container {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 30px;
+        margin-bottom: 20px;
+    }
+
+    .gauge {
+        position: relative;
+        width: 200px;
+        height: 100px;
+        overflow: hidden;
+    }
+
+    .gauge-circle {
+        width: 200px;
+        height: 200px;
+        border-radius: 50%;
+        border: 20px solid #e0e0e0;
+        border-bottom-color: transparent;
+        border-left-color: transparent;
+        transform: rotate(45deg);
+        position: relative;
+    }
+
+    .gauge-fill {
+        position: absolute;
+        width: 200px;
+        height: 200px;
+        border-radius: 50%;
+        border: 20px solid #1a73e8;
+        border-bottom-color: transparent;
+        border-left-color: transparent;
+        transform: rotate(45deg);
+        clip-path: inset(0 50% 0 0);
+        transition: transform 0.6s ease;
+    }
+
+    .gauge-text {
+        position: absolute;
+        top: 60%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        text-align: center;
+    }
+
+    .gauge-value {
+        font-size: 24px;
+        font-weight: bold;
+        color: #1a73e8;
+    }
+
+    .gauge-label {
+        font-size: 12px;
+        color: #5f6368;
+        margin-top: 5px;
+    }
+
+    .filter-container {
+        display: flex;
+        align-items: center;
+        gap: 15px;
+        margin-bottom: 20px;
+        padding: 15px;
+        background: white;
+        border: 1px solid #e0e0e0;
+        border-radius: 8px;
+    }
+
+    .filter-container label {
+        font-weight: 600;
+        color: #333;
+    }
+
+    .filter-container select {
+        padding: 8px 12px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        font-size: 14px;
+        min-width: 200px;
+        cursor: pointer;
+    }
+
+    .filter-container select:focus {
+        outline: none;
+        border-color: #1a73e8;
+    }
 </style>
 {% endblock %}
 
@@ -255,6 +344,13 @@
 <div id="alert-container"></div>
 
 {% if has_data %}
+<div class="filter-container">
+    <label for="country-filter">Filter by Country:</label>
+    <select id="country-filter" onchange="applyCountryFilter()">
+        <option value="">All Countries</option>
+    </select>
+</div>
+
 <div class="tabs">
     <button class="tab active" onclick="switchLevel('lau')">LAU</button>
     <button class="tab" onclick="switchLevel(3)">NUTS 3</button>
@@ -264,9 +360,23 @@
 </div>
 
 <div class="level-stats">
-    <div class="stat-card" style="margin: 0;">
-        <div class="stat-number" id="regions-count">{{ lau_count }}</div>
-        <div class="stat-label"><span id="level-name">LAU</span> Regions Visited</div>
+    <div class="gauge-container">
+        <div>
+            <div class="gauge">
+                <svg width="200" height="100" viewBox="0 0 200 100">
+                    <path d="M 20 80 A 80 80 0 0 1 180 80" fill="none" stroke="#e0e0e0" stroke-width="20" stroke-linecap="round"/>
+                    <path id="gauge-arc" d="M 20 80 A 80 80 0 0 1 180 80" fill="none" stroke="#1a73e8" stroke-width="20" stroke-linecap="round"
+                          stroke-dasharray="251.2" stroke-dashoffset="251.2" style="transition: stroke-dashoffset 0.6s ease;"/>
+                </svg>
+                <div class="gauge-text">
+                    <div class="gauge-value"><span id="gauge-visited">{{ lau_count }}</span> / <span id="gauge-total">98000</span></div>
+                    <div class="gauge-label"><span id="gauge-percentage">0.0</span>%</div>
+                </div>
+            </div>
+            <div style="text-align: center; margin-top: 10px; color: #5f6368; font-size: 14px;">
+                <span id="level-name">LAU</span> Regions Visited
+            </div>
+        </div>
     </div>
 </div>
 
@@ -306,6 +416,9 @@
 <script>
 let isProcessing = false;
 let statusCheckInterval = null;
+let currentCountryFilter = '';
+let currentLevel = 'lau';
+let totalCounts = {};
 
 async function updateActivities() {
     if (isProcessing) return;
@@ -434,19 +547,17 @@ function showAlert(message, type) {
     }, 5000);
 }
 
-async function loadRegions(level = 'lau') {
+async function loadRegions(level = 'lau', country = '') {
     try {
-        const response = await fetch(`/api/regions?level=${level}`);
+        const url = `/api/regions?level=${level}${country ? `&country=${country}` : ''}`;
+        const response = await fetch(url);
         const regions = await response.json();
 
         const tbody = document.getElementById('regions-tbody');
         if (!tbody) return;
 
-        // Update region count
-        const regionsCount = document.getElementById('regions-count');
-        if (regionsCount) {
-            regionsCount.textContent = regions.length;
-        }
+        // Update gauge
+        await updateGauge(level, country);
 
         if (regions.length === 0) {
             tbody.innerHTML = '<tr><td colspan="4" style="text-align: center;">No regions found</td></tr>';
@@ -466,8 +577,75 @@ async function loadRegions(level = 'lau') {
     }
 }
 
+async function loadCountries() {
+    try {
+        const response = await fetch('/api/countries');
+        const countries = await response.json();
+
+        const select = document.getElementById('country-filter');
+        if (!select) return;
+
+        select.innerHTML = '<option value="">All Countries</option>';
+        countries.forEach(country => {
+            const option = document.createElement('option');
+            option.value = country.nuts_code;
+            option.textContent = country.name;
+            select.appendChild(option);
+        });
+    } catch (error) {
+        console.error('Failed to load countries:', error);
+    }
+}
+
+async function loadTotalCounts(country = '') {
+    try {
+        const url = `/api/totals${country ? `?country=${country}` : ''}`;
+        const response = await fetch(url);
+        totalCounts = await response.json();
+    } catch (error) {
+        console.error('Failed to load total counts:', error);
+    }
+}
+
+async function updateGauge(level, country = '') {
+    // Load total counts if not already loaded or if country filter changed
+    if (Object.keys(totalCounts).length === 0 || country !== currentCountryFilter) {
+        await loadTotalCounts(country);
+    }
+
+    const levelKey = level === 'lau' ? 'lau' : `nuts${level}`;
+    const data = totalCounts[levelKey] || {visited: 0, total: 0};
+
+    const visited = data.visited;
+    const total = data.total;
+    const percentage = total > 0 ? (visited / total * 100) : 0;
+
+    // Update gauge display
+    document.getElementById('gauge-visited').textContent = visited;
+    document.getElementById('gauge-total').textContent = total;
+    document.getElementById('gauge-percentage').textContent = percentage.toFixed(1);
+
+    // Update gauge arc (251.2 is the arc length for a semicircle with radius 80)
+    const arc = document.getElementById('gauge-arc');
+    const arcLength = 251.2;
+    const offset = arcLength - (arcLength * (percentage / 100));
+    arc.style.strokeDashoffset = offset;
+}
+
+function applyCountryFilter() {
+    const select = document.getElementById('country-filter');
+    currentCountryFilter = select.value;
+
+    // Reload current level with filter
+    loadRegions(currentLevel, currentCountryFilter);
+
+    // Update map (reload iframe)
+    const mapFrame = document.getElementById('activity-map');
+    const timestamp = Date.now();
+    mapFrame.src = `/static/map_${currentLevel}.html?t=${timestamp}`;
+}
+
 let sortDirection = {};
-let currentLevel = 'lau';
 
 function switchLevel(level) {
     currentLevel = level;
@@ -495,8 +673,8 @@ function switchLevel(level) {
         levelName.textContent = levelTitle;
     }
 
-    // Load regions for this level
-    loadRegions(level);
+    // Load regions for this level with current filter
+    loadRegions(level, currentCountryFilter);
 }
 
 function hideMapLoading() {
@@ -549,6 +727,7 @@ function sortTable(columnIndex, type) {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
+    loadCountries();
     loadRegions();
 
     // Auto-start processing if needed

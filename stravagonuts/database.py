@@ -469,3 +469,133 @@ def update_nuts_first_visited_dates():
         """)
         conn.commit()
         print(f"[DB] Updated first_visited dates for NUTS regions")
+
+
+def get_visited_countries():
+    """Get list of NUTS0 countries that have been visited."""
+    with get_db() as conn:
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT DISTINCT regions.nuts_regions.nuts_code, regions.nuts_regions.name
+            FROM regions.nuts_regions
+            INNER JOIN activity_nuts ON regions.nuts_regions.nuts_code = activity_nuts.nuts_code
+            WHERE level = 0
+            ORDER BY regions.nuts_regions.name
+        """)
+        return [dict(row) for row in cursor.fetchall()]
+
+
+def get_all_lau_regions_filtered(country_code):
+    """Get all visited LAU regions filtered by country."""
+    with get_db() as conn:
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT regions.lau_regions.lau_id, name, country_code,
+                   lau_first_visited.first_visited,
+                   COUNT(activity_id) as activity_count
+            FROM regions.lau_regions
+            INNER JOIN activity_lau ON regions.lau_regions.lau_id = activity_lau.lau_id
+            LEFT JOIN lau_first_visited ON regions.lau_regions.lau_id = lau_first_visited.lau_id
+            WHERE regions.lau_regions.country_code = ?
+            GROUP BY regions.lau_regions.lau_id
+            ORDER BY lau_first_visited.first_visited DESC
+        """, (country_code,))
+        return [dict(row) for row in cursor.fetchall()]
+
+
+def get_nuts_regions_by_level_filtered(level, country_code):
+    """Get all visited NUTS regions at a specific level filtered by country."""
+    with get_db() as conn:
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT regions.nuts_regions.nuts_code, name, country_code,
+                   nuts_first_visited.first_visited,
+                   COUNT(DISTINCT activity_id) as activity_count
+            FROM regions.nuts_regions
+            INNER JOIN activity_nuts ON regions.nuts_regions.nuts_code = activity_nuts.nuts_code
+            LEFT JOIN nuts_first_visited ON regions.nuts_regions.nuts_code = nuts_first_visited.nuts_code
+            WHERE level = ? AND regions.nuts_regions.country_code = ?
+            GROUP BY regions.nuts_regions.nuts_code
+            ORDER BY nuts_first_visited.first_visited DESC
+        """, (level, country_code))
+        return [dict(row) for row in cursor.fetchall()]
+
+
+def get_total_regions_count(country_code=None):
+    """Get total number of regions at each level, optionally filtered by country.
+
+    Returns both visited and total counts for each level.
+    """
+    with get_db() as conn:
+        cursor = conn.cursor()
+
+        results = {}
+
+        # LAU counts
+        if country_code:
+            # Visited LAU in country
+            cursor.execute("""
+                SELECT COUNT(DISTINCT regions.lau_regions.lau_id) as count
+                FROM regions.lau_regions
+                INNER JOIN activity_lau ON regions.lau_regions.lau_id = activity_lau.lau_id
+                WHERE regions.lau_regions.country_code = ?
+            """, (country_code,))
+            visited_lau = cursor.fetchone()['count']
+
+            # Total LAU in country
+            cursor.execute("""
+                SELECT COUNT(*) as count
+                FROM regions.lau_regions
+                WHERE country_code = ?
+            """, (country_code,))
+            total_lau = cursor.fetchone()['count']
+        else:
+            # All visited LAU
+            cursor.execute("SELECT COUNT(DISTINCT lau_id) as count FROM activity_lau")
+            visited_lau = cursor.fetchone()['count']
+
+            # All LAU
+            cursor.execute("SELECT COUNT(*) as count FROM regions.lau_regions")
+            total_lau = cursor.fetchone()['count']
+
+        results['lau'] = {'visited': visited_lau, 'total': total_lau}
+
+        # NUTS counts for each level
+        for level in [0, 1, 2, 3]:
+            if country_code:
+                # Visited NUTS in country
+                cursor.execute("""
+                    SELECT COUNT(DISTINCT regions.nuts_regions.nuts_code) as count
+                    FROM regions.nuts_regions
+                    INNER JOIN activity_nuts ON regions.nuts_regions.nuts_code = activity_nuts.nuts_code
+                    WHERE regions.nuts_regions.level = ? AND regions.nuts_regions.country_code = ?
+                """, (level, country_code))
+                visited_nuts = cursor.fetchone()['count']
+
+                # Total NUTS in country
+                cursor.execute("""
+                    SELECT COUNT(*) as count
+                    FROM regions.nuts_regions
+                    WHERE level = ? AND country_code = ?
+                """, (level, country_code))
+                total_nuts = cursor.fetchone()['count']
+            else:
+                # All visited NUTS
+                cursor.execute("""
+                    SELECT COUNT(DISTINCT nuts_code) as count
+                    FROM activity_nuts
+                    WHERE nuts_code IN (SELECT nuts_code FROM regions.nuts_regions WHERE level = ?)
+                """, (level,))
+                visited_nuts = cursor.fetchone()['count']
+
+                # All NUTS
+                cursor.execute("""
+                    SELECT COUNT(*) as count
+                    FROM regions.nuts_regions
+                    WHERE level = ?
+                """, (level,))
+                total_nuts = cursor.fetchone()['count']
+
+            results[f'nuts{level}'] = {'visited': visited_nuts, 'total': total_nuts}
+
+        return results
