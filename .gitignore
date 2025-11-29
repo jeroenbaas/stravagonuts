@@ -3,6 +3,7 @@ strava_lau.db
 strava_lau.db-journal
 databases/user.db
 databases/user.db-journal
+databases/regions.db
 databases/regions.db-journal
 
 # Cached data
