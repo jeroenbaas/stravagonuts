@@ -1,0 +1,84 @@
+MIT License
+
+Copyright (c) 2025 Strava GO NUTS Contributors
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+================================================================================
+DATA LICENCE — NUTS 60M & LAU BOUNDARIES
+================================================================================
+
+This project contains derivative boundary datasets extracted, indexed, or 
+transformed from:
+
+• NUTS (Nomenclature of Territorial Units for Statistics) — 1:60 000 000 scale 
+  version ("NUTS 60M")
+  
+• LAU (Local Administrative Units) — latest available version from 
+  Eurostat/GISCO and associated copyright holders
+
+These datasets are NOT licensed under this project's open-source software 
+licence. They are redistributed (or referenced) under the terms specified by 
+their original providers. All rights remain with Eurostat, GISCO, 
+EuroGeographics, and any additional copyright holders.
+
+CONDITIONS FOR REUSE OF THESE DATA
+-----------------------------------
+
+If you use, modify, or redistribute the NUTS 60M or LAU boundary data included 
+in this project, in whole or in part, you must:
+
+1. Retain all original copyright notices and include the following 
+   acknowledgement:
+   
+   "© European Commission – Eurostat / GISCO, and © EuroGeographics where 
+    applicable."
+
+2. Acknowledge the source exactly as required in the dataset metadata.
+
+3. Indicate any modifications made to the data (e.g., re-indexing, 
+   simplification, format conversion).
+
+4. Respect any specific constraints applied to LAU data, which may include:
+   
+   • Non-commercial use only (depending on the LAU distribution source you used)
+   • Required attribution to Eurostat/GISCO and EuroGeographics
+   • Retention of proprietary boundaries supplied under licence by third-party 
+     providers
+
+5. Consult the original metadata and licence notes accompanying the datasets 
+   for full terms and potential updates:
+   
+   • NUTS official distributions: 
+     https://ec.europa.eu/eurostat/web/gisco/geodata/reference-data/administrative-units-statistical-units/nuts
+   
+   • LAU distributions: 
+     https://ec.europa.eu/eurostat/web/gisco/geodata/reference-data/administrative-units-statistical-units/lau
+
+IMPORTANT
+---------
+
+The inclusion of NUTS and LAU data in this repository does not grant additional 
+rights beyond what the original licences permit. The project's open-source 
+licence applies only to the project's source code and documentation, not to the 
+boundary data.
+
+For the complete legal terms of the boundary data, refer to:
+• Eurostat copyright policy: https://ec.europa.eu/eurostat/about/policies/copyright
+• GISCO data policy: https://ec.europa.eu/eurostat/web/gisco/geodata/reference-data
