@@ -382,9 +382,25 @@ def clear_all_data():
     with get_db() as conn:
         cursor = conn.cursor()
         cursor.execute("DELETE FROM activity_lau")
+        cursor.execute("DELETE FROM activity_nuts")
+        cursor.execute("DELETE FROM lau_first_visited")
+        cursor.execute("DELETE FROM nuts_first_visited")
         cursor.execute("DELETE FROM regions.lau_regions")
+        cursor.execute("DELETE FROM regions.nuts_regions")
         cursor.execute("DELETE FROM activities")
         cursor.execute("DELETE FROM metadata")
+        conn.commit()
+
+
+def clear_activities():
+    """Clear only activity data (keeps region database and auth)."""
+    with get_db() as conn:
+        cursor = conn.cursor()
+        cursor.execute("DELETE FROM activity_lau")
+        cursor.execute("DELETE FROM activity_nuts")
+        cursor.execute("DELETE FROM lau_first_visited")
+        cursor.execute("DELETE FROM nuts_first_visited")
+        cursor.execute("DELETE FROM activities")
         conn.commit()
 
 

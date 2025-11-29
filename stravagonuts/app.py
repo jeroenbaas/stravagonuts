@@ -6,7 +6,7 @@ from flask import Flask, render_template, request, jsonify, redirect, url_for, s
 from .database import (
     init_database, is_configured, get_setting, set_setting,
     get_activity_count, get_all_lau_regions, get_activities_with_streams_count,
-    get_activities_not_fetched_count, get_nuts_regions_by_level
+    get_activities_not_fetched_count, get_nuts_regions_by_level, clear_activities
 )
 from .strava_service import fetch_and_store_activities, process_activity_streams
 from .map_generator import generate_map
@@ -317,6 +317,72 @@ def reset_data():
     thread = threading.Thread(target=process)
     thread.start()
     print("[RESET] Background thread started")
+
+    return jsonify({"success": True})
+
+
+@app.route("/api/reset-activities", methods=["POST"])
+def reset_activities():
+    """Reset activities only - clear activity data and re-download from Strava."""
+    global processing_status
+
+    print("\n" + "="*60)
+    print("[RESET ACTIVITIES] Reset activities endpoint called")
+    print("="*60)
+
+    if processing_status["is_processing"]:
+        print("[RESET ACTIVITIES] Already processing, returning error")
+        return jsonify({"error": "Already processing"}), 400
+
+    def process():
+        global processing_status
+        try:
+            print("[RESET ACTIVITIES] Starting processing thread...")
+            processing_status["is_processing"] = True
+            processing_status["stage"] = "Clearing activities"
+            processing_status["progress"] = 0
+
+            # Clear only activity data
+            print("[RESET ACTIVITIES] Clearing activity data from database...")
+            clear_activities()
+
+            # Fetch everything
+            print("[RESET ACTIVITIES] Fetching all activities...")
+            processing_status["stage"] = "Fetching all activities"
+            fetch_and_store_activities(processing_status, fetch_all=True)
+
+            # Process streams
+            print("[RESET ACTIVITIES] Processing activity streams...")
+            process_activity_streams(processing_status)
+
+            # Generate map
+            print("[RESET ACTIVITIES] Generating map...")
+            processing_status["stage"] = "Generating map"
+            processing_status["progress"] = 0
+            processing_status["total"] = 1
+            processing_status["message"] = "Creating map visualization..."
+            generate_map(processing_status)
+
+            processing_status["stage"] = "Complete"
+            processing_status["message"] = "Activities reset complete!"
+            processing_status["progress"] = 1
+            processing_status["total"] = 1
+            print("[RESET ACTIVITIES] Processing complete!")
+
+        except Exception as e:
+            print(f"[RESET ACTIVITIES] ERROR: {e}")
+            import traceback
+            traceback.print_exc()
+            processing_status["stage"] = "Error"
+            processing_status["message"] = str(e)
+
+        finally:
+            processing_status["is_processing"] = False
+
+    import threading
+    thread = threading.Thread(target=process)
+    thread.start()
+    print("[RESET ACTIVITIES] Background thread started")
 
     return jsonify({"success": True})
 

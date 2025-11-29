@@ -349,7 +349,8 @@
         </div>
         <div class="menu-section">
             <button id="update-btn-menu" class="menu-button" onclick="updateActivities()">Update Activities</button>
-            <button id="reset-btn-menu" class="menu-button danger" onclick="resetData()">Complete Reset</button>
+            <button id="reset-activities-btn" class="menu-button danger" onclick="resetActivities()">Reset Activities</button>
+            <button id="reset-app-btn" class="menu-button danger" onclick="resetApp()">Reset App</button>
         </div>
     </div>
 </div>
@@ -519,10 +520,10 @@ async function updateActivities() {
     }
 }
 
-async function resetData() {
+async function resetActivities() {
     if (isProcessing) return;
 
-    if (!confirm('This will delete all data and reload everything from Strava. Continue?')) {
+    if (!confirm('⚠️ Reset Activities\n\nThis will:\n- Delete all your activity data\n- Re-download all activities from Strava\n- Regenerate all maps\n\nYour authentication will be preserved.\n\nContinue?')) {
         return;
     }
 
@@ -533,11 +534,60 @@ async function resetData() {
     // Show progress immediately
     isProcessing = true;
     document.getElementById('update-btn-menu').disabled = true;
-    document.getElementById('reset-btn-menu').disabled = true;
+    document.getElementById('reset-activities-btn').disabled = true;
+    document.getElementById('reset-app-btn').disabled = true;
     document.getElementById('progress-container').style.display = 'block';
     document.getElementById('progress-fill').style.width = '0%';
     document.getElementById('progress-fill').textContent = '';
-    document.getElementById('progress-message').textContent = 'Starting reset...';
+    document.getElementById('progress-message').textContent = 'Starting activity reset...';
+
+    try {
+        const response = await fetch('/api/reset-activities', { method: 'POST' });
+        if (response.ok) {
+            statusCheckInterval = setInterval(checkStatus, 500);
+        } else {
+            showAlert('Failed to start activity reset', 'error');
+            isProcessing = false;
+            document.getElementById('update-btn-menu').disabled = false;
+            document.getElementById('reset-activities-btn').disabled = false;
+            document.getElementById('reset-app-btn').disabled = false;
+            document.getElementById('progress-container').style.display = 'none';
+        }
+    } catch (error) {
+        showAlert('Error: ' + error.message, 'error');
+        isProcessing = false;
+        document.getElementById('update-btn-menu').disabled = false;
+        document.getElementById('reset-activities-btn').disabled = false;
+        document.getElementById('reset-app-btn').disabled = false;
+        document.getElementById('progress-container').style.display = 'none';
+    }
+}
+
+async function resetApp() {
+    if (isProcessing) return;
+
+    if (!confirm('⚠️ Reset App (DESTRUCTIVE)\n\nThis will:\n- Delete ALL data (activities, regions, maps)\n- Clear your Strava authentication\n- Require you to set up the app again\n\nThis action cannot be undone.\n\nAre you sure you want to continue?')) {
+        return;
+    }
+
+    // Double confirmation for app reset
+    if (!confirm('Final confirmation: Reset everything and clear all data?')) {
+        return;
+    }
+
+    // Close menu
+    const dropdown = document.getElementById('menu-dropdown');
+    if (dropdown) dropdown.classList.remove('open');
+
+    // Show progress immediately
+    isProcessing = true;
+    document.getElementById('update-btn-menu').disabled = true;
+    document.getElementById('reset-activities-btn').disabled = true;
+    document.getElementById('reset-app-btn').disabled = true;
+    document.getElementById('progress-container').style.display = 'block';
+    document.getElementById('progress-fill').style.width = '0%';
+    document.getElementById('progress-fill').textContent = '';
+    document.getElementById('progress-message').textContent = 'Starting complete reset...';
 
     try {
         const response = await fetch('/api/reset', { method: 'POST' });
@@ -547,14 +597,16 @@ async function resetData() {
             showAlert('Failed to start reset', 'error');
             isProcessing = false;
             document.getElementById('update-btn-menu').disabled = false;
-            document.getElementById('reset-btn-menu').disabled = false;
+            document.getElementById('reset-activities-btn').disabled = false;
+            document.getElementById('reset-app-btn').disabled = false;
             document.getElementById('progress-container').style.display = 'none';
         }
     } catch (error) {
         showAlert('Error: ' + error.message, 'error');
         isProcessing = false;
         document.getElementById('update-btn-menu').disabled = false;
-        document.getElementById('reset-btn-menu').disabled = false;
+        document.getElementById('reset-activities-btn').disabled = false;
+        document.getElementById('reset-app-btn').disabled = false;
         document.getElementById('progress-container').style.display = 'none';
     }
 }
@@ -587,7 +639,8 @@ async function checkStatus() {
             isProcessing = false;
 
             document.getElementById('update-btn-menu').disabled = false;
-            document.getElementById('reset-btn-menu').disabled = false;
+            document.getElementById('reset-activities-btn').disabled = false;
+            document.getElementById('reset-app-btn').disabled = false;
 
             if (status.stage === 'Complete') {
                 showAlert(status.message, 'success');

@@ -136,15 +136,23 @@
         .menu-button:disabled {
             opacity: 0.5;
             cursor: not-allowed;
+            background: none;
         }
 
         .menu-button.danger {
             color: #E63946;
+            background: none;
         }
 
         .menu-button.danger:hover {
             background: #FFEAEC;
             color: #C92A35;
+        }
+
+        .menu-button.danger:disabled {
+            background: none;
+            color: #E63946;
+            opacity: 0.5;
         }
 
         .content {
