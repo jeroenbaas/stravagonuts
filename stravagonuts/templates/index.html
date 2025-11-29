@@ -5,39 +5,34 @@
 {% block extra_css %}
 <style>
     .stats-container {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-        gap: 20px;
-        margin-bottom: 30px;
+        display: flex;
+        gap: 15px;
+        margin-bottom: 20px;
     }
 
     .stat-card {
         background: white;
         color: #333;
-        padding: 25px;
-        border-radius: 10px;
+        padding: 12px 20px;
+        border-radius: 6px;
         text-align: center;
         border: 1px solid #e0e0e0;
-        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+        display: flex;
+        align-items: center;
+        gap: 10px;
     }
 
     .stat-number {
-        font-size: 3em;
+        font-size: 1.8em;
         font-weight: bold;
-        margin-bottom: 5px;
-        color: #1a73e8;
+        color: #D63E00;
     }
 
     .stat-label {
-        font-size: 1.1em;
+        font-size: 0.9em;
         color: #5f6368;
-    }
-
-    .controls {
-        display: flex;
-        gap: 15px;
-        margin-bottom: 30px;
-        flex-wrap: wrap;
+        white-space: nowrap;
     }
 
     .map-container {
@@ -85,12 +80,12 @@
 
     th.sort-asc::after {
         content: ' ↑';
-        color: #1a73e8;
+        color: #FC4C02;
     }
 
     th.sort-desc::after {
         content: ' ↓';
-        color: #1a73e8;
+        color: #FC4C02;
     }
 
     td {
@@ -140,14 +135,14 @@
     }
 
     .tab:hover {
-        background: rgba(26, 115, 232, 0.05);
-        color: #1a73e8;
+        background: rgba(252, 76, 2, 0.05);
+        color: #FC4C02;
     }
 
     .tab.active {
         background: transparent;
-        color: #1a73e8;
-        border-bottom: 3px solid #1a73e8;
+        color: #FC4C02;
+        border-bottom: 3px solid #FC4C02;
     }
 
     .level-stats {
@@ -183,7 +178,7 @@
         width: 50px;
         height: 50px;
         border: 4px solid #f3f3f3;
-        border-top: 4px solid #1a73e8;
+        border-top: 4px solid #FC4C02;
         border-radius: 50%;
         animation: spin 1s linear infinite;
     }
@@ -212,93 +207,69 @@
         margin-bottom: 20px;
     }
 
-    .retro-gauge {
+    .simple-gauge {
         position: relative;
-        width: 180px;
+        width: 200px;
         height: 120px;
-        background: linear-gradient(180deg, #2a2a2a 0%, #1a1a1a 100%);
-        border-radius: 12px 12px 0 0;
-        box-shadow:
-            inset 0 2px 4px rgba(255,255,255,0.1),
-            0 4px 8px rgba(0,0,0,0.3);
-        overflow: hidden;
     }
 
-    .gauge-face {
+    .gauge-svg {
+        width: 100%;
+        height: 100%;
+    }
+
+    .gauge-bg {
+        fill: none;
+        stroke: #e0e0e0;
+        stroke-width: 12;
+        stroke-linecap: round;
+    }
+
+    .gauge-fill {
+        fill: none;
+        stroke: #FC4C02;
+        stroke-width: 12;
+        stroke-linecap: round;
+        transition: stroke-dashoffset 0.8s ease;
+        filter: drop-shadow(0 0 4px rgba(252, 76, 2, 0.4));
+    }
+
+    .gauge-text {
         position: absolute;
-        bottom: -90px;
+        bottom: 15px;
         left: 50%;
         transform: translateX(-50%);
-        width: 180px;
-        height: 180px;
-        border-radius: 50%;
-        background: radial-gradient(circle, #3a3a3a 0%, #2a2a2a 100%);
-        border: 3px solid #4a4a4a;
-        box-shadow: inset 0 0 20px rgba(0,0,0,0.5);
+        font-size: 11px;
+        color: #666;
+        white-space: nowrap;
     }
 
-    .gauge-ticks {
+    .gauge-label-left {
         position: absolute;
-        bottom: -90px;
+        bottom: 5px;
+        left: 0;
+        font-size: 11px;
+        font-weight: 600;
+        color: #FC4C02;
+    }
+
+    .gauge-label-right {
+        position: absolute;
+        bottom: 5px;
+        right: 0;
+        font-size: 11px;
+        font-weight: 600;
+        color: #FC4C02;
+    }
+
+    .gauge-label-middle {
+        position: absolute;
+        top: 0;
         left: 50%;
         transform: translateX(-50%);
-        width: 180px;
-        height: 180px;
-    }
-
-    .gauge-tick {
-        position: absolute;
-        width: 2px;
-        height: 8px;
-        background: #d4af37;
-        bottom: 90px;
-        left: 50%;
-        transform-origin: 0 90px;
-        box-shadow: 0 0 2px rgba(212, 175, 55, 0.5);
-    }
-
-    .gauge-tick.major {
-        width: 3px;
-        height: 12px;
-        background: #d4af37;
-    }
-
-    .gauge-needle {
-        position: absolute;
-        bottom: 0;
-        left: 50%;
-        width: 3px;
-        height: 70px;
-        background: linear-gradient(180deg, #ff4444 0%, #cc0000 100%);
-        transform-origin: 50% 100%;
-        transform: translateX(-50%) rotate(-90deg);
-        transition: transform 0.8s cubic-bezier(0.4, 0.0, 0.2, 1);
-        box-shadow: 0 0 8px rgba(255, 68, 68, 0.6);
-        z-index: 10;
-    }
-
-    .gauge-center {
-        position: absolute;
-        bottom: -8px;
-        left: 50%;
-        transform: translateX(-50%);
-        width: 16px;
-        height: 16px;
-        border-radius: 50%;
-        background: radial-gradient(circle, #d4af37 0%, #8b7355 100%);
-        border: 2px solid #2a2a2a;
-        box-shadow: 0 0 8px rgba(212, 175, 55, 0.4);
-        z-index: 11;
-    }
-
-    .gauge-glow {
-        position: absolute;
-        bottom: 10px;
-        left: 50%;
-        transform: translateX(-50%);
-        width: 60px;
-        height: 30px;
-        background: radial-gradient(ellipse, rgba(212, 175, 55, 0.3) 0%, transparent 70%);
+        font-size: 11px;
+        font-weight: 600;
+        color: #FC4C02;
     }
 
     .gauge-stats {
@@ -309,25 +280,21 @@
     }
 
     .gauge-number {
-        font-family: 'Courier New', monospace;
         font-size: 32px;
         font-weight: bold;
-        color: #1a73e8;
+        color: #D63E00;
         line-height: 1;
-        text-shadow: 0 2px 4px rgba(0,0,0,0.1);
     }
 
     .gauge-total {
-        font-family: 'Courier New', monospace;
         font-size: 20px;
         color: #5f6368;
         line-height: 1;
     }
 
     .gauge-percentage {
-        font-family: 'Courier New', monospace;
         font-size: 16px;
-        color: #d4af37;
+        color: #FC4C02;
         font-weight: bold;
         margin-top: 4px;
     }
@@ -359,19 +326,31 @@
 
     .filter-container select:focus {
         outline: none;
-        border-color: #1a73e8;
+        border-color: #FC4C02;
     }
 </style>
 {% endblock %}
 
 {% block content %}
-<div style="background: #e8f0fe; border-left: 4px solid #1a73e8; padding: 15px; margin-bottom: 20px; border-radius: 6px; display: flex; justify-content: space-between; align-items: center;">
-    <div>
-        <strong style="color: #333;">Connected Account:</strong>
-        <span style="color: #1a73e8; font-weight: 600;">{{ athlete_name }}</span>
-        {% if athlete_id %}
-        <span style="color: #5f6368; font-size: 0.9em;">(Strava ID: {{ athlete_id }})</span>
-        {% endif %}
+<!-- User Menu -->
+<div class="user-menu">
+    <button class="menu-toggle" onclick="toggleMenu()">
+        <span>{{ athlete_name }}</span>
+        <span id="menu-icon">▼</span>
+    </button>
+    <div class="menu-dropdown" id="menu-dropdown">
+        <div class="menu-section">
+            <div class="menu-user">
+                {{ athlete_name }}
+                {% if athlete_id %}
+                <div class="menu-user-id">Strava ID: {{ athlete_id }}</div>
+                {% endif %}
+            </div>
+        </div>
+        <div class="menu-section">
+            <button id="update-btn-menu" class="menu-button" onclick="updateActivities()">Update Activities</button>
+            <button id="reset-btn-menu" class="menu-button danger" onclick="resetData()">Complete Reset</button>
+        </div>
     </div>
 </div>
 
@@ -397,11 +376,6 @@
     Processing will start automatically...
 </div>
 {% endif %}
-
-<div class="controls">
-    <button id="update-btn" onclick="updateActivities()">Update Activities</button>
-    <button id="reset-btn" class="danger" onclick="resetData()">Complete Reset</button>
-</div>
 
 <div class="progress-container" id="progress-container">
     <div class="progress-bar">
@@ -430,12 +404,16 @@
 
 <div class="level-stats">
     <div class="gauge-container">
-        <div class="retro-gauge">
-            <div class="gauge-face"></div>
-            <div class="gauge-ticks" id="gauge-ticks"></div>
-            <div class="gauge-glow"></div>
-            <div class="gauge-needle" id="gauge-needle"></div>
-            <div class="gauge-center"></div>
+        <div class="simple-gauge">
+            <svg class="gauge-svg" viewBox="0 0 200 120">
+                <path class="gauge-bg" d="M 20 100 A 80 80 0 0 1 180 100" />
+                <path class="gauge-fill" id="gauge-arc" d="M 20 100 A 80 80 0 0 1 180 100"
+                      stroke-dasharray="251.2" stroke-dashoffset="251.2" />
+            </svg>
+            <div class="gauge-label-left">0%</div>
+            <div class="gauge-label-middle">50%</div>
+            <div class="gauge-label-right">100%</div>
+            <div class="gauge-text" id="gauge-text">0.0%</div>
         </div>
         <div class="gauge-stats">
             <div class="gauge-number"><span id="gauge-visited">{{ lau_count }}</span></div>
@@ -485,13 +463,37 @@ let currentCountryFilter = '';
 let currentLevel = 'lau';
 let totalCounts = {};
 
+function toggleMenu() {
+    const dropdown = document.getElementById('menu-dropdown');
+    const icon = document.getElementById('menu-icon');
+    dropdown.classList.toggle('open');
+    icon.textContent = dropdown.classList.contains('open') ? '▲' : '▼';
+}
+
+// Close menu when clicking outside
+document.addEventListener('click', function(event) {
+    const menu = document.querySelector('.user-menu');
+    if (menu && !menu.contains(event.target)) {
+        const dropdown = document.getElementById('menu-dropdown');
+        const icon = document.getElementById('menu-icon');
+        if (dropdown && dropdown.classList.contains('open')) {
+            dropdown.classList.remove('open');
+            icon.textContent = '▼';
+        }
+    }
+});
+
 async function updateActivities() {
     if (isProcessing) return;
 
+    // Close menu
+    const dropdown = document.getElementById('menu-dropdown');
+    if (dropdown) dropdown.classList.remove('open');
+
     // Show progress immediately
     isProcessing = true;
-    document.getElementById('update-btn').disabled = true;
-    document.getElementById('reset-btn').disabled = true;
+    document.getElementById('update-btn-menu').disabled = true;
+    document.getElementById('reset-btn-menu').disabled = true;
     document.getElementById('progress-container').style.display = 'block';
     document.getElementById('progress-fill').style.width = '0%';
     document.getElementById('progress-fill').textContent = '';
@@ -504,15 +506,15 @@ async function updateActivities() {
         } else {
             showAlert('Failed to start update', 'error');
             isProcessing = false;
-            document.getElementById('update-btn').disabled = false;
-            document.getElementById('reset-btn').disabled = false;
+            document.getElementById('update-btn-menu').disabled = false;
+            document.getElementById('reset-btn-menu').disabled = false;
             document.getElementById('progress-container').style.display = 'none';
         }
     } catch (error) {
         showAlert('Error: ' + error.message, 'error');
         isProcessing = false;
-        document.getElementById('update-btn').disabled = false;
-        document.getElementById('reset-btn').disabled = false;
+        document.getElementById('update-btn-menu').disabled = false;
+        document.getElementById('reset-btn-menu').disabled = false;
         document.getElementById('progress-container').style.display = 'none';
     }
 }
@@ -524,10 +526,14 @@ async function resetData() {
         return;
     }
 
+    // Close menu
+    const dropdown = document.getElementById('menu-dropdown');
+    if (dropdown) dropdown.classList.remove('open');
+
     // Show progress immediately
     isProcessing = true;
-    document.getElementById('update-btn').disabled = true;
-    document.getElementById('reset-btn').disabled = true;
+    document.getElementById('update-btn-menu').disabled = true;
+    document.getElementById('reset-btn-menu').disabled = true;
     document.getElementById('progress-container').style.display = 'block';
     document.getElementById('progress-fill').style.width = '0%';
     document.getElementById('progress-fill').textContent = '';
@@ -540,15 +546,15 @@ async function resetData() {
         } else {
             showAlert('Failed to start reset', 'error');
             isProcessing = false;
-            document.getElementById('update-btn').disabled = false;
-            document.getElementById('reset-btn').disabled = false;
+            document.getElementById('update-btn-menu').disabled = false;
+            document.getElementById('reset-btn-menu').disabled = false;
             document.getElementById('progress-container').style.display = 'none';
         }
     } catch (error) {
         showAlert('Error: ' + error.message, 'error');
         isProcessing = false;
-        document.getElementById('update-btn').disabled = false;
-        document.getElementById('reset-btn').disabled = false;
+        document.getElementById('update-btn-menu').disabled = false;
+        document.getElementById('reset-btn-menu').disabled = false;
         document.getElementById('progress-container').style.display = 'none';
     }
 }
@@ -580,8 +586,8 @@ async function checkStatus() {
             clearInterval(statusCheckInterval);
             isProcessing = false;
 
-            document.getElementById('update-btn').disabled = false;
-            document.getElementById('reset-btn').disabled = false;
+            document.getElementById('update-btn-menu').disabled = false;
+            document.getElementById('reset-btn-menu').disabled = false;
 
             if (status.stage === 'Complete') {
                 showAlert(status.message, 'success');
@@ -672,18 +678,8 @@ async function loadTotalCounts(country = '') {
     }
 }
 
-function initializeGaugeTicks() {
-    // Create tick marks for the retro gauge (0% to 100%, 180 degree arc)
-    const ticksContainer = document.getElementById('gauge-ticks');
-    if (!ticksContainer || ticksContainer.children.length > 0) return;
-
-    for (let i = 0; i <= 10; i++) {
-        const tick = document.createElement('div');
-        tick.className = i % 2 === 0 ? 'gauge-tick major' : 'gauge-tick';
-        const angle = -90 + (i * 18); // -90deg to +90deg
-        tick.style.transform = `rotate(${angle}deg)`;
-        ticksContainer.appendChild(tick);
-    }
+function initializeGauge() {
+    // No initialization needed for SVG gauge
 }
 
 async function updateGauge(level, country = '') {
@@ -701,11 +697,16 @@ async function updateGauge(level, country = '') {
     document.getElementById('gauge-visited').textContent = visited.toLocaleString();
     document.getElementById('gauge-total').textContent = total.toLocaleString();
     document.getElementById('gauge-percentage').textContent = percentage.toFixed(1);
+    document.getElementById('gauge-text').textContent = percentage.toFixed(1) + '%';
 
-    // Update needle rotation (-90deg = 0%, +90deg = 100%)
-    const needle = document.getElementById('gauge-needle');
-    const angle = -90 + (percentage * 1.8); // Map 0-100% to -90 to +90 degrees
-    needle.style.transform = `translateX(-50%) rotate(${angle}deg)`;
+    // Update SVG arc
+    const arc = document.getElementById('gauge-arc');
+    if (arc) {
+        // Arc length is approximately 251.2
+        const arcLength = 251.2;
+        const offset = arcLength - (arcLength * percentage / 100);
+        arc.style.strokeDashoffset = offset;
+    }
 }
 
 async function applyCountryFilter() {
@@ -825,8 +826,8 @@ function sortTable(columnIndex, type) {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
-    // Initialize gauge tick marks
-    initializeGaugeTicks();
+    // Initialize gauge
+    initializeGauge();
 
     // Restore state from URL parameters
     const urlParams = new URLSearchParams(window.location.search);

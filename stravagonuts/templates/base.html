@@ -13,7 +13,7 @@
 
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-            background: #f5f5f5;
+            background: #FAFAFA;
             min-height: 100vh;
             padding: 20px;
         }
@@ -32,7 +32,8 @@
             color: white;
             padding: 30px 40px;
             text-align: center;
-            border-bottom: 1px solid #e84118;
+            border-bottom: 1px solid #D63E00;
+            position: relative;
         }
 
         header h1 {
@@ -45,12 +46,113 @@
             opacity: 0.9;
         }
 
+        .user-menu {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            z-index: 100;
+        }
+
+        .menu-toggle {
+            background: white;
+            color: #FC4C02;
+            border: 2px solid #FC4C02;
+            padding: 10px 16px;
+            font-size: 14px;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .menu-toggle:hover {
+            background: #FC4C02;
+            color: white;
+            border-color: #FC4C02;
+            box-shadow: 0 2px 6px rgba(252, 76, 2, 0.3);
+        }
+
+        .menu-dropdown {
+            position: absolute;
+            top: 100%;
+            right: 0;
+            margin-top: 8px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            min-width: 220px;
+            display: none;
+            z-index: 1000;
+        }
+
+        .menu-dropdown.open {
+            display: block;
+        }
+
+        .menu-section {
+            padding: 12px;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        .menu-section:last-child {
+            border-bottom: none;
+        }
+
+        .menu-user {
+            padding: 8px 0;
+            color: #333;
+            font-weight: 600;
+        }
+
+        .menu-user-id {
+            font-size: 0.85em;
+            color: #666;
+            font-weight: normal;
+        }
+
+        .menu-button {
+            width: 100%;
+            text-align: left;
+            padding: 10px 12px;
+            background: none;
+            color: #333;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.2s ease;
+            font-weight: 500;
+        }
+
+        .menu-button:hover {
+            background: #FFF5F0;
+            color: #FC4C02;
+        }
+
+        .menu-button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .menu-button.danger {
+            color: #E63946;
+        }
+
+        .menu-button.danger:hover {
+            background: #FFEAEC;
+            color: #C92A35;
+        }
+
         .content {
             padding: 40px;
         }
 
         button {
-            background: #1a73e8;
+            background: #FC4C02;
             color: white;
             border: none;
             padding: 12px 30px;
@@ -62,23 +164,24 @@
         }
 
         button:hover {
-            background: #1765cc;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+            background: #D63E00;
+            box-shadow: 0 2px 4px rgba(252, 76, 2, 0.3);
         }
 
         button:disabled {
-            background: #dadce0;
-            color: #80868b;
+            background: #CCCCCC;
+            color: #888888;
             cursor: not-allowed;
+            box-shadow: none;
         }
 
         button.danger {
-            background: #d93025;
+            background: #E63946;
         }
 
         button.danger:hover {
-            background: #c5221f;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+            background: #C92A35;
+            box-shadow: 0 2px 4px rgba(230, 57, 70, 0.3);
         }
 
         input[type="text"] {
@@ -92,7 +195,7 @@
 
         input[type="text"]:focus {
             outline: none;
-            border-color: #1a73e8;
+            border-color: #FC4C02;
         }
 
         .form-group {
@@ -103,19 +206,19 @@
             display: block;
             margin-bottom: 8px;
             font-weight: 600;
-            color: #333;
+            color: #2C2C2C;
         }
 
         .info-box {
-            background: #e8f0fe;
-            border-left: 4px solid #1a73e8;
+            background: #FFF5F0;
+            border-left: 4px solid #FC4C02;
             padding: 20px;
             margin: 20px 0;
             border-radius: 6px;
         }
 
         .info-box a {
-            color: #1a73e8;
+            color: #FC4C02;
             font-weight: 600;
         }
 
@@ -135,7 +238,7 @@
 
         .progress-fill {
             height: 100%;
-            background: #1a73e8;
+            background: #FC4C02;
             width: 0%;
             transition: width 0.3s ease;
             display: flex;
@@ -158,15 +261,15 @@
         }
 
         .alert-error {
-            background: #fee;
-            color: #c00;
-            border: 1px solid #fcc;
+            background: #FFEAEC;
+            color: #C92A35;
+            border: 1px solid #FFD4D8;
         }
 
         .alert-success {
-            background: #efe;
-            color: #060;
-            border: 1px solid #cfc;
+            background: #E8F5E9;
+            color: #2E7D32;
+            border: 1px solid #C8E6C9;
         }
     </style>
     {% block extra_css %}{% endblock %}
@@ -187,8 +290,8 @@
             </p>
             <p style="margin: 0; font-size: 0.9em;">
                 Administrative boundary data (NUTS &amp; LAU) provided by
-                <a href="https://ec.europa.eu/eurostat/web/gisco" target="_blank" style="color: #1a73e8;">Eurostat/GISCO</a>.
-                See <a href="https://github.com/jeroenbaas/stravagonuts/blob/master/LICENSE" target="_blank" style="color: #1a73e8;">LICENSE</a> for full terms.
+                <a href="https://ec.europa.eu/eurostat/web/gisco" target="_blank" style="color: #FC4C02;">Eurostat/GISCO</a>.
+                See <a href="https://github.com/jeroenbaas/stravagonuts/blob/master/LICENSE" target="_blank" style="color: #FC4C02;">LICENSE</a> for full terms.
             </p>
         </footer>
     </div>
