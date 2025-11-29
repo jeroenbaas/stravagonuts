@@ -539,16 +539,22 @@ def generate_level_map(level, linestrings, save_path, country_code=None):
 
 def generate_interactive_map_generic(overlapping, linestrings, save_path, name_col, code_col):
     """Generic interactive map generator for any administrative level."""
-    
+
     # Convert to WGS84 for Folium
     if overlapping.crs != "EPSG:4326":
         overlapping = overlapping.to_crs("EPSG:4326")
-    
-    all_lines_gs = gpd.GeoSeries(linestrings, crs="EPSG:4326")
-    bounds = all_lines_gs.total_bounds
+
+    # Use region bounds for center and zoom if we have regions
+    # Otherwise fall back to activity bounds
+    if not overlapping.empty:
+        bounds = overlapping.total_bounds  # Use region bounds for better zoom
+    else:
+        all_lines_gs = gpd.GeoSeries(linestrings, crs="EPSG:4326")
+        bounds = all_lines_gs.total_bounds
+
     center_lat = (bounds[1] + bounds[3]) / 2
     center_lon = (bounds[0] + bounds[2]) / 2
-    
+
     # Create map
     m = folium.Map(
         location=[center_lat, center_lon],

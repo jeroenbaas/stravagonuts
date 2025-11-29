@@ -608,10 +608,8 @@ async function loadTotalCounts(country = '') {
 }
 
 async function updateGauge(level, country = '') {
-    // Load total counts if not already loaded or if country filter changed
-    if (Object.keys(totalCounts).length === 0 || country !== currentCountryFilter) {
-        await loadTotalCounts(country);
-    }
+    // Always reload total counts to ensure fresh data
+    await loadTotalCounts(country);
 
     const levelKey = level === 'lau' ? 'lau' : `nuts${level}`;
     const data = totalCounts[levelKey] || {visited: 0, total: 0};
@@ -636,6 +634,16 @@ async function applyCountryFilter() {
     const select = document.getElementById('country-filter');
     currentCountryFilter = select.value;
 
+    // Update URL to reflect selection
+    const url = new URL(window.location);
+    if (currentCountryFilter) {
+        url.searchParams.set('country', currentCountryFilter);
+    } else {
+        url.searchParams.delete('country');
+    }
+    url.searchParams.set('level', currentLevel);
+    window.history.pushState({}, '', url);
+
     // Reload current level with filter
     await loadRegions(currentLevel, currentCountryFilter);
 
@@ -657,6 +665,14 @@ let sortDirection = {};
 function switchLevel(level) {
     currentLevel = level;
 
+    // Update URL
+    const url = new URL(window.location);
+    url.searchParams.set('level', level);
+    if (currentCountryFilter) {
+        url.searchParams.set('country', currentCountryFilter);
+    }
+    window.history.pushState({}, '', url);
+
     // Update active tab
     document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
     event.target.classList.add('active');
@@ -670,7 +686,8 @@ function switchLevel(level) {
     // Update map iframe
     const mapFrame = document.getElementById('activity-map');
     const timestamp = Date.now();
-    mapFrame.src = `/static/map_${level}.html?t=${timestamp}`;
+    const countryParam = currentCountryFilter ? `&country=${currentCountryFilter}` : '';
+    mapFrame.src = `/static/map_${level}.html?t=${timestamp}${countryParam}`;
 
     // Update title and level name
     const levelTitle = level === 'lau' ? 'LAU' : `NUTS ${level}`;
@@ -734,8 +751,53 @@ function sortTable(columnIndex, type) {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
-    loadCountries();
-    loadRegions();
+    // Restore state from URL parameters
+    const urlParams = new URLSearchParams(window.location.search);
+    const urlCountry = urlParams.get('country');
+    const urlLevel = urlParams.get('level') || 'lau';
+
+    // Load countries first
+    loadCountries().then(() => {
+        // Set country filter if in URL
+        if (urlCountry) {
+            const select = document.getElementById('country-filter');
+            if (select) {
+                select.value = urlCountry;
+                currentCountryFilter = urlCountry;
+            }
+        }
+
+        // Set active tab if in URL
+        if (urlLevel !== 'lau') {
+            currentLevel = urlLevel;
+            // Update active tab visually
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.classList.remove('active');
+                if (tab.textContent.includes(urlLevel === '0' ? 'NUTS 0' :
+                                            urlLevel === '1' ? 'NUTS 1' :
+                                            urlLevel === '2' ? 'NUTS 2' :
+                                            urlLevel === '3' ? 'NUTS 3' : 'LAU')) {
+                    tab.classList.add('active');
+                }
+            });
+
+            // Update map and title
+            const mapFrame = document.getElementById('activity-map');
+            const timestamp = Date.now();
+            const countryParam = currentCountryFilter ? `&country=${currentCountryFilter}` : '';
+            mapFrame.src = `/static/map_${urlLevel}.html?t=${timestamp}${countryParam}`;
+
+            const levelTitle = `NUTS ${urlLevel}`;
+            document.getElementById('level-title').textContent = levelTitle;
+            const levelName = document.getElementById('level-name');
+            if (levelName) {
+                levelName.textContent = levelTitle;
+            }
+        }
+
+        // Load regions with URL parameters
+        loadRegions(currentLevel, currentCountryFilter);
+    });
 
     // Auto-start processing if needed
     {% if should_auto_process %}
