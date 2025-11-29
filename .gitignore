@@ -1,6 +1,9 @@
-# Database
+# Databases
 strava_lau.db
 strava_lau.db-journal
+databases/user.db
+databases/user.db-journal
+databases/regions.db-journal
 
 # Cached data
 lau_data/
@@ -38,3 +41,8 @@ Thumbs.db
 
 # Logs
 *.log
+
+# PyInstaller build artifacts
+build/
+dist/
+*.spec.backup
