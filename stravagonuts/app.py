@@ -379,6 +379,72 @@ def get_totals():
     return jsonify(totals)
 
 
+@app.route("/static/map_<level>.html")
+def serve_map(level):
+    """Serve map HTML file, generating it if missing."""
+    map_path = f"stravagonuts/static/map_{level}.html"
+
+    # Check if map exists
+    if os.path.exists(map_path):
+        from flask import send_file
+        return send_file(map_path)
+
+    # Map doesn't exist - generate it
+    print(f"[MAP] Map for level {level} not found, generating...")
+
+    # Check if we have any activities with GPS data
+    activities_with_streams = get_activities_with_streams_count()
+    if activities_with_streams == 0:
+        return """
+        <!DOCTYPE html>
+        <html>
+        <head><title>No Data</title></head>
+        <body style="display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; font-family: Arial, sans-serif; background: #f5f5f5;">
+            <div style="text-align: center; color: #666;">
+                <h2>No GPS Data Available</h2>
+                <p>Upload activities with GPS data to generate maps.</p>
+            </div>
+        </body>
+        </html>
+        """, 200
+
+    # Generate maps in background
+    try:
+        generate_map()
+        # Check if map was generated
+        if os.path.exists(map_path):
+            from flask import send_file
+            return send_file(map_path)
+        else:
+            return """
+            <!DOCTYPE html>
+            <html>
+            <head><title>Map Generation Failed</title></head>
+            <body style="display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; font-family: Arial, sans-serif; background: #f5f5f5;">
+                <div style="text-align: center; color: #666;">
+                    <h2>Map Generation Failed</h2>
+                    <p>Please try refreshing the page or click "Update Activities".</p>
+                </div>
+            </body>
+            </html>
+            """, 500
+    except Exception as e:
+        print(f"[MAP] Error generating map: {e}")
+        return f"""
+        <!DOCTYPE html>
+        <html>
+        <head><title>Error</title></head>
+        <body style="display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; font-family: Arial, sans-serif; background: #f5f5f5;">
+            <div style="text-align: center; color: #666;">
+                <h2>Error Generating Map</h2>
+                <p>{str(e)}</p>
+                <p>Please click "Update Activities" to regenerate maps.</p>
+            </div>
+        </body>
+        </html>
+        """, 500
+
+
 @app.route("/map")
 def map_view():
     """Serve the generated map image."""
@@ -387,4 +453,4 @@ def map_view():
     if os.path.exists(map_path):
         return send_file(map_path, mimetype="image/png")
     else:
-        return "Map not generated yet", 404
+        return "Map not generated yet. Please run Update Activities.", 404
