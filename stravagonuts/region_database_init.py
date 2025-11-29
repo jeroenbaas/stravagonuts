@@ -18,9 +18,51 @@ def get_regions_db():
         yield conn
     finally:
         conn.close()
+
 from .nuts_handler import parse_nuts_mapping, load_nuts_shapefile, filter_nuts_by_level
 from .map_generator import ensure_lau_shapefile
 import geopandas as gpd
+
+
+def create_regions_schema():
+    """Create the schema for regions database."""
+    with get_regions_db() as conn:
+        cursor = conn.cursor()
+
+        # LAU regions table
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS lau_regions (
+                lau_id TEXT PRIMARY KEY,
+                name TEXT,
+                country_code TEXT,
+                geometry TEXT
+            )
+        """)
+
+        # NUTS regions table (all levels: 0, 1, 2, 3)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS nuts_regions (
+                nuts_code TEXT PRIMARY KEY,
+                name TEXT,
+                level INTEGER,
+                country_code TEXT,
+                geometry TEXT
+            )
+        """)
+
+        # LAU to NUTS mapping table
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS lau_nuts_mapping (
+                lau_id TEXT PRIMARY KEY,
+                nuts0_code TEXT,
+                nuts1_code TEXT,
+                nuts2_code TEXT,
+                nuts3_code TEXT,
+                FOREIGN KEY (lau_id) REFERENCES lau_regions(lau_id)
+            )
+        """)
+
+        conn.commit()
 
 
 def check_region_database_status():
@@ -28,26 +70,35 @@ def check_region_database_status():
     with get_regions_db() as conn:
         cursor = conn.cursor()
 
-        # Count LAU regions
-        cursor.execute("SELECT COUNT(*) FROM lau_regions")
-        lau_count = cursor.fetchone()[0]
+        try:
+            # Count LAU regions
+            cursor.execute("SELECT COUNT(*) FROM lau_regions")
+            lau_count = cursor.fetchone()[0]
 
-        # Count NUTS regions by level
-        nuts_counts = {}
-        for level in [0, 1, 2, 3]:
-            cursor.execute("SELECT COUNT(*) FROM nuts_regions WHERE level = ?", (level,))
-            nuts_counts[level] = cursor.fetchone()[0]
+            # Count NUTS regions by level
+            nuts_counts = {}
+            for level in [0, 1, 2, 3]:
+                cursor.execute("SELECT COUNT(*) FROM nuts_regions WHERE level = ?", (level,))
+                nuts_counts[level] = cursor.fetchone()[0]
 
-        # Count LAU-NUTS mappings
-        cursor.execute("SELECT COUNT(*) FROM lau_nuts_mapping")
-        mapping_count = cursor.fetchone()[0]
+            # Count LAU-NUTS mappings
+            cursor.execute("SELECT COUNT(*) FROM lau_nuts_mapping")
+            mapping_count = cursor.fetchone()[0]
 
-        return {
-            'lau_count': lau_count,
-            'nuts_counts': nuts_counts,
-            'mapping_count': mapping_count,
-            'is_initialized': lau_count > 0 and all(c > 0 for c in nuts_counts.values())
-        }
+            return {
+                'lau_count': lau_count,
+                'nuts_counts': nuts_counts,
+                'mapping_count': mapping_count,
+                'is_initialized': lau_count > 0 and all(c > 0 for c in nuts_counts.values())
+            }
+        except sqlite3.OperationalError:
+            # Tables don't exist yet
+            return {
+                'lau_count': 0,
+                'nuts_counts': {0: 0, 1: 0, 2: 0, 3: 0},
+                'mapping_count': 0,
+                'is_initialized': False
+            }
 
 
 def initialize_region_database(force=False):
@@ -62,6 +113,9 @@ def initialize_region_database(force=False):
     Args:
         force: If True, re-initialize even if already initialized
     """
+
+    # Create schema first
+    create_regions_schema()
 
     status = check_region_database_status()
 
