@@ -390,7 +390,7 @@ def serve_map(level):
         return send_file(map_path)
 
     # Map doesn't exist - generate it
-    print(f"[MAP] Map for level {level} not found, generating...")
+    print(f"[MAP] Map for level {level} not found, generating on-demand...")
 
     # Check if we have any activities with GPS data
     activities_with_streams = get_activities_with_streams_count()
@@ -408,12 +408,38 @@ def serve_map(level):
         </html>
         """, 200
 
-    # Generate maps in background
+    # Generate ONLY the requested map (not all maps)
     try:
-        generate_map()
+        from .map_generator import generate_single_level_map
+        generate_single_level_map(level)
+
         # Check if map was generated
         if os.path.exists(map_path):
             from flask import send_file
+
+            # Kick off background generation for other levels
+            import threading
+            def generate_other_maps():
+                try:
+                    print("[MAP] Background generation of other map levels starting...")
+                    all_levels = ['lau', 0, 1, 2, 3]
+                    for other_level in all_levels:
+                        # Convert level to string for comparison
+                        level_str = str(level)
+                        other_level_str = str(other_level)
+
+                        if level_str != other_level_str:
+                            other_map_path = f"stravagonuts/static/map_{other_level}.html"
+                            if not os.path.exists(other_map_path):
+                                print(f"[MAP] Generating map for level {other_level} in background...")
+                                generate_single_level_map(other_level)
+                    print("[MAP] Background map generation complete")
+                except Exception as e:
+                    print(f"[MAP] Background generation error: {e}")
+
+            thread = threading.Thread(target=generate_other_maps, daemon=True)
+            thread.start()
+
             return send_file(map_path)
         else:
             return """
@@ -430,6 +456,8 @@ def serve_map(level):
             """, 500
     except Exception as e:
         print(f"[MAP] Error generating map: {e}")
+        import traceback
+        traceback.print_exc()
         return f"""
         <!DOCTYPE html>
         <html>

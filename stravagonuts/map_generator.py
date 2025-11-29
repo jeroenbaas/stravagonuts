@@ -402,6 +402,45 @@ def process_nuts_regions(activity_ids, activity_lau_map, lau_gdf):
     print("[MAP] NUTS processing complete!")
 
 
+def generate_single_level_map(level):
+    """Generate a single map for the specified level only.
+
+    Args:
+        level: 'lau', 0, 1, 2, or 3
+    """
+    print(f"[MAP] Generating single map for level: {level}")
+
+    # Get all activities with streams
+    activities = get_all_activities_with_streams()
+
+    if not activities:
+        print("[MAP] No activities with GPS data found")
+        return
+
+    # Convert streams to linestrings
+    linestrings = []
+    for activity in activities:
+        streams = activity.get("streams_data")
+        if streams:
+            linestring = streams_to_linestring(streams)
+            if linestring:
+                linestrings.append(linestring)
+
+    if not linestrings:
+        print("[MAP] No valid GPS tracks found")
+        return
+
+    # Generate map for this level only
+    # Use absolute path relative to package
+    import os
+    static_dir = os.path.join(os.path.dirname(__file__), 'static')
+    os.makedirs(static_dir, exist_ok=True)
+    map_path = os.path.join(static_dir, f"map_{level}.html")
+    print(f"[MAP] Generating map for level {level}...")
+    generate_level_map(level, linestrings, map_path)
+    print(f"[MAP] Map saved to {map_path}")
+
+
 def generate_level_map(level, linestrings, save_path):
     """Generate interactive map for a specific administrative level.
 
