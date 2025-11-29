@@ -47,3 +47,4 @@ Thumbs.db
 build/
 dist/
 *.spec.backup
+stravagonuts/static/map*
