@@ -10,3 +10,4 @@ folium==0.15.1
 openpyxl==3.1.2
 fiona>=1.9.0
 pyogrio>=0.7.0
+pip-system-certs==4.0; sys_platform == 'win32'

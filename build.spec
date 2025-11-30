@@ -18,6 +18,8 @@ a = Analysis(
     ],
     hiddenimports=[
         'certifi',
+        'pip_system_certs',
+        'pip_system_certs.wrapt_requests',
         'shapely.geometry',
         'geopandas',
         'folium',

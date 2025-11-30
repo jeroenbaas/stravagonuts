@@ -19,6 +19,14 @@ if getattr(sys, 'frozen', False):
     os.environ['SSL_CERT_FILE'] = certifi.where()
     os.environ['REQUESTS_CA_BUNDLE'] = certifi.where()
 
+    # On Windows, use system certificate store (for corporate proxies like Zscaler)
+    if sys.platform == 'win32':
+        try:
+            import pip_system_certs.wrapt_requests
+            print("[SSL] Using Windows certificate store for SSL verification")
+        except ImportError:
+            print("[SSL] Warning: pip-system-certs not installed. Corporate proxies may cause SSL errors.")
+
 from stravagonuts import create_app
 from stravagonuts.database import init_database, REGIONS_DB
 from stravagonuts.region_database_init import initialize_region_database
