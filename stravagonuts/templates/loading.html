@@ -39,6 +39,7 @@
         }).addTo(map);
 
         const processedIds = new Set();
+        const markers = [];
 
         function updateStatus() {
             fetch('/api/loading-status')
@@ -66,10 +67,20 @@
                                     iconAnchor: [20, 20]
                                 });
 
-                                L.marker([loc.lat, loc.lng], { icon: icon })
+                                const marker = L.marker([loc.lat, loc.lng], { icon: icon })
                                     .addTo(map);
+                                markers.push(marker);
                             }
                         });
+
+                        // Auto-fit map to show all markers
+                        if (markers.length > 0) {
+                            const group = L.featureGroup(markers);
+                            map.fitBounds(group.getBounds(), {
+                                padding: [50, 50],
+                                maxZoom: 12
+                            });
+                        }
                     }
 
                     // Check for completion

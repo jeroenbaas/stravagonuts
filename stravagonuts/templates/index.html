@@ -180,7 +180,8 @@
         border: 4px solid #f3f3f3;
         border-top: 4px solid #FC4C02;
         border-radius: 50%;
-        animation: spin 1s linear infinite;
+        animation: spin 1s linear 1;
+        animation-fill-mode: forwards;
     }
 
     @keyframes spin {
@@ -503,37 +504,16 @@ async function updateActivities() {
     const dropdown = document.getElementById('menu-dropdown');
     if (dropdown) dropdown.classList.remove('open');
 
-    // Show progress immediately
-    console.log('[UPDATE] Starting update process');
-    isProcessing = true;
-    logProcessingState('updateActivities - set to true');
-    document.getElementById('update-btn-menu').disabled = true;
-    document.getElementById('reset-activities-btn').disabled = true;
-    document.getElementById('reset-app-btn').disabled = true;
-    document.getElementById('progress-container').style.display = 'block';
-    document.getElementById('progress-fill').style.width = '0%';
-    document.getElementById('progress-fill').textContent = '';
-    document.getElementById('progress-message').textContent = 'Starting update...';
-
     try {
         const response = await fetch('/api/update', { method: 'POST' });
         if (response.ok) {
-            statusCheckInterval = setInterval(checkStatus, 500);
+            // Redirect to loading page
+            window.location.href = '/loading';
         } else {
             showAlert('Failed to start update', 'error');
-            isProcessing = false;
-            document.getElementById('update-btn-menu').disabled = false;
-            document.getElementById('reset-activities-btn').disabled = false;
-            document.getElementById('reset-app-btn').disabled = false;
-            document.getElementById('progress-container').style.display = 'none';
         }
     } catch (error) {
         showAlert('Error: ' + error.message, 'error');
-        isProcessing = false;
-        document.getElementById('update-btn-menu').disabled = false;
-        document.getElementById('reset-activities-btn').disabled = false;
-        document.getElementById('reset-app-btn').disabled = false;
-        document.getElementById('progress-container').style.display = 'none';
     }
 }
 
@@ -562,35 +542,16 @@ async function resetActivities() {
     const dropdown = document.getElementById('menu-dropdown');
     if (dropdown) dropdown.classList.remove('open');
 
-    // Show progress immediately
-    isProcessing = true;
-    document.getElementById('update-btn-menu').disabled = true;
-    document.getElementById('reset-activities-btn').disabled = true;
-    document.getElementById('reset-app-btn').disabled = true;
-    document.getElementById('progress-container').style.display = 'block';
-    document.getElementById('progress-fill').style.width = '0%';
-    document.getElementById('progress-fill').textContent = '';
-    document.getElementById('progress-message').textContent = 'Starting activity reset...';
-
     try {
         const response = await fetch('/api/reset-activities', { method: 'POST' });
         if (response.ok) {
-            statusCheckInterval = setInterval(checkStatus, 500);
+            // Redirect to loading page
+            window.location.href = '/loading';
         } else {
             showAlert('Failed to start activity reset', 'error');
-            isProcessing = false;
-            document.getElementById('update-btn-menu').disabled = false;
-            document.getElementById('reset-activities-btn').disabled = false;
-            document.getElementById('reset-app-btn').disabled = false;
-            document.getElementById('progress-container').style.display = 'none';
         }
     } catch (error) {
         showAlert('Error: ' + error.message, 'error');
-        isProcessing = false;
-        document.getElementById('update-btn-menu').disabled = false;
-        document.getElementById('reset-activities-btn').disabled = false;
-        document.getElementById('reset-app-btn').disabled = false;
-        document.getElementById('progress-container').style.display = 'none';
     }
 }
 
@@ -627,35 +588,16 @@ async function resetApp() {
     const dropdown = document.getElementById('menu-dropdown');
     if (dropdown) dropdown.classList.remove('open');
 
-    // Show progress immediately
-    isProcessing = true;
-    document.getElementById('update-btn-menu').disabled = true;
-    document.getElementById('reset-activities-btn').disabled = true;
-    document.getElementById('reset-app-btn').disabled = true;
-    document.getElementById('progress-container').style.display = 'block';
-    document.getElementById('progress-fill').style.width = '0%';
-    document.getElementById('progress-fill').textContent = '';
-    document.getElementById('progress-message').textContent = 'Starting complete reset...';
-
     try {
         const response = await fetch('/api/reset', { method: 'POST' });
         if (response.ok) {
-            statusCheckInterval = setInterval(checkStatus, 500);
+            // Redirect to loading page
+            window.location.href = '/loading';
         } else {
             showAlert('Failed to start reset', 'error');
-            isProcessing = false;
-            document.getElementById('update-btn-menu').disabled = false;
-            document.getElementById('reset-activities-btn').disabled = false;
-            document.getElementById('reset-app-btn').disabled = false;
-            document.getElementById('progress-container').style.display = 'none';
         }
     } catch (error) {
         showAlert('Error: ' + error.message, 'error');
-        isProcessing = false;
-        document.getElementById('update-btn-menu').disabled = false;
-        document.getElementById('reset-activities-btn').disabled = false;
-        document.getElementById('reset-app-btn').disabled = false;
-        document.getElementById('progress-container').style.display = 'none';
     }
 }
 
@@ -693,6 +635,18 @@ async function checkStatus() {
 
             if (status.stage === 'Complete') {
                 showAlert(status.message, 'success');
+
+                // Reload the map iframe immediately to show new data
+                const mapFrame = document.getElementById('activity-map');
+                const mapLoading = document.getElementById('map-loading');
+                if (mapFrame && mapLoading) {
+                    mapLoading.classList.remove('hidden');
+                    const timestamp = Date.now();
+                    const countryParam = currentCountryFilter ? `&country=${currentCountryFilter}` : '';
+                    mapFrame.src = `/static/map_${currentLevel}.html?t=${timestamp}${countryParam}`;
+                }
+
+                // Reload page after showing the map
                 setTimeout(() => {
                     window.location.reload();
                 }, 2000);

@@ -111,12 +111,73 @@ def init_database():
             cursor.execute("ALTER TABLE activities ADD COLUMN processed_for_regions INTEGER DEFAULT 0")
             # For existing activities that are already linked, mark as processed
             cursor.execute("""
-                UPDATE activities 
-                SET processed_for_regions = 1 
+                UPDATE activities
+                SET processed_for_regions = 1
                 WHERE id IN (SELECT DISTINCT activity_id FROM activity_lau)
             """)
             conn.commit()
             print("Migrated existing activities with processed_for_regions flag")
+
+        # Check if settings table has PRIMARY KEY on key
+        cursor.execute("PRAGMA table_info(settings)")
+        columns = cursor.fetchall()
+        has_settings_pk = any(col[5] == 1 and col[1] == 'key' for col in columns)
+
+        if not has_settings_pk:
+            print("Fixing settings table PRIMARY KEY constraint...")
+            # Create new table with correct schema
+            cursor.execute("""
+                CREATE TABLE settings_new (
+                    key TEXT PRIMARY KEY,
+                    value TEXT NOT NULL
+                )
+            """)
+            # Copy data from old table
+            cursor.execute("""
+                INSERT INTO settings_new
+                SELECT key, value
+                FROM settings
+            """)
+            # Drop old table and rename new one
+            cursor.execute("DROP TABLE settings")
+            cursor.execute("ALTER TABLE settings_new RENAME TO settings")
+            conn.commit()
+            print("  [OK] Settings table PRIMARY KEY fixed")
+
+        # Check if activities table has PRIMARY KEY on id
+        cursor.execute("PRAGMA table_info(activities)")
+        columns = cursor.fetchall()
+        has_pk = any(col[5] == 1 and col[1] == 'id' for col in columns)
+
+        if not has_pk:
+            print("Fixing activities table PRIMARY KEY constraint...")
+            # Create new table with correct schema
+            cursor.execute("""
+                CREATE TABLE activities_new (
+                    id INTEGER PRIMARY KEY,
+                    name TEXT,
+                    type TEXT,
+                    start_date TEXT,
+                    distance REAL,
+                    has_streams INTEGER DEFAULT 0,
+                    streams_fetched INTEGER DEFAULT 0,
+                    streams_data TEXT,
+                    processed_for_regions INTEGER DEFAULT 0,
+                    created_at TEXT DEFAULT CURRENT_TIMESTAMP
+                )
+            """)
+            # Copy data from old table
+            cursor.execute("""
+                INSERT INTO activities_new
+                SELECT id, name, type, start_date, distance, has_streams,
+                       streams_fetched, streams_data, processed_for_regions, created_at
+                FROM activities
+            """)
+            # Drop old table and rename new one
+            cursor.execute("DROP TABLE activities")
+            cursor.execute("ALTER TABLE activities_new RENAME TO activities")
+            conn.commit()
+            print("  [OK] Activities table PRIMARY KEY fixed")
 
         # LAU regions table
         cursor.execute("""
@@ -249,16 +310,29 @@ def save_activity(activity_id, name, activity_type, start_date, distance):
     """Save or update an activity."""
     with get_db() as conn:
         cursor = conn.cursor()
-        cursor.execute("""
-            INSERT INTO activities (id, name, type, start_date, distance)
-            VALUES (?, ?, ?, ?, ?)
-            ON CONFLICT(id) DO UPDATE SET
-                name = excluded.name,
-                type = excluded.type,
-                start_date = excluded.start_date,
-                distance = excluded.distance
-        """, (activity_id, name, activity_type, start_date, distance))
-        conn.commit()
+        try:
+            cursor.execute("""
+                INSERT INTO activities (id, name, type, start_date, distance)
+                VALUES (?, ?, ?, ?, ?)
+                ON CONFLICT(id) DO UPDATE SET
+                    name = excluded.name,
+                    type = excluded.type,
+                    start_date = excluded.start_date,
+                    distance = excluded.distance
+            """, (activity_id, name, activity_type, start_date, distance))
+            conn.commit()
+        except Exception as e:
+            print(f"[DB] save_activity error: {e}")
+            print(f"[DB] Activity ID: {activity_id}")
+            # Check what tables are visible
+            cursor.execute("SELECT name FROM sqlite_master WHERE type='table'")
+            tables = cursor.fetchall()
+            print(f"[DB] Visible tables: {[t[0] for t in tables]}")
+            # Check activities table schema
+            cursor.execute("PRAGMA table_info(activities)")
+            schema = cursor.fetchall()
+            print(f"[DB] Activities schema: {schema}")
+            raise
 
 
 def save_activity_streams(activity_id, streams_data):

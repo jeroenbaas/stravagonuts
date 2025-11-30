@@ -633,11 +633,15 @@ def generate_interactive_map_generic(overlapping, linestrings, save_path, name_c
                 popup=f'Activity {idx + 1}'
             ).add_to(m)
     
-    # Fit bounds
+    # Fit bounds with minimal padding
     southwest = [bounds[1], bounds[0]]
     northeast = [bounds[3], bounds[2]]
-    m.fit_bounds([southwest, northeast])
-    
+    m.fit_bounds([southwest, northeast], padding=[10, 10])
+
+    # Set max bounds to prevent zooming out beyond data
+    m.options['maxBounds'] = [[bounds[1], bounds[0]], [bounds[3], bounds[2]]]
+    m.options['maxBoundsViscosity'] = 1.0
+
     # Add fullscreen button
     plugins.Fullscreen().add_to(m)
 

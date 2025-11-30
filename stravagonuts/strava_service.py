@@ -11,7 +11,6 @@ from .database import (
 
 STRAVA_TOKEN_URL = "https://www.strava.com/api/v3/oauth/token"
 ACTIVITIES_URL = "https://www.strava.com/api/v3/athlete/activities"
-ATHLETE_STATS_URL = "https://www.strava.com/api/v3/athletes/{id}/stats"
 STREAMS_URL = "https://www.strava.com/api/v3/activities/{id}/streams?keys=latlng,time&key_by_type=true"
 
 
@@ -46,34 +45,13 @@ def get_headers():
 
 
 def get_total_activity_count():
-    """Get total number of activities from Strava stats."""
-    athlete_id = get_setting("athlete_id")
-    if not athlete_id:
-        return 0
-    
-    url = ATHLETE_STATS_URL.format(id=athlete_id)
-    headers = get_headers()
-    
-    try:
-        response = requests.get(url, headers=headers)
-        if response.status_code == 401:
-            refresh_access_token()
-            headers = get_headers()
-            response = requests.get(url, headers=headers)
-            
-        response.raise_for_status()
-        stats = response.json()
-        print(f"[STRAVA] Stats response: {stats}")
-        
-        total = (
-            stats.get("all_ride_totals", {}).get("count", 0) +
-            stats.get("all_run_totals", {}).get("count", 0) +
-            stats.get("all_swim_totals", {}).get("count", 0)
-        )
-        return total
-    except Exception as e:
-        print(f"[STRAVA] Error getting stats: {e}")
-        return 0
+    """Get total number of activities from Strava.
+
+    Note: Strava's stats endpoint only returns counts for certain activity types
+    (ride, run, swim), so we don't use it. Instead, we return 0 to indicate
+    unknown total, and the progress bar will just show count of fetched activities.
+    """
+    return 0
 
 
 def fetch_and_store_activities_incremental(after_date=None, status_dict=None):
@@ -253,7 +231,12 @@ def fetch_and_process_parallel(status_dict, fetch_all=False):
                 
                 processed_count += 1
                 status_dict["progress"] = processed_count
-                status_dict["message"] = f"Processed {processed_count} activities..."
+
+                # Update message based on whether we know the total yet
+                if status_dict["total"] > 0:
+                    status_dict["message"] = f"Fetching GPS data: {processed_count} / {status_dict['total']}"
+                else:
+                    status_dict["message"] = f"Fetched {processed_count} activities..."
                 
                 activity_queue.task_done()
                 
@@ -309,14 +292,20 @@ def fetch_and_process_parallel(status_dict, fetch_all=False):
                 
             if len(activities) < per_page:
                 break
-                
+
             page += 1
             params["page"] = page
-            
+
     except Exception as e:
         print(f"[PARALLEL] Producer error: {e}")
         status_dict["message"] = f"Error: {str(e)}"
-        
+
+    # All pages fetched - now we know the total
+    print(f"[PARALLEL] All pages fetched. Total activities: {total_fetched}")
+    status_dict["total"] = total_fetched
+    status_dict["stage"] = "Fetching GPS data"
+    status_dict["message"] = f"Fetching GPS data for {total_fetched} activities..."
+
     # Signal consumer to stop when queue is empty
     stop_event.set()
     consumer_thread.join()
