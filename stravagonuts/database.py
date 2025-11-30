@@ -80,6 +80,7 @@ def init_database():
                 has_streams INTEGER DEFAULT 0,
                 streams_fetched INTEGER DEFAULT 0,
                 streams_data TEXT,
+                processed_for_regions INTEGER DEFAULT 0,
                 created_at TEXT DEFAULT CURRENT_TIMESTAMP
             )
         """)
@@ -101,6 +102,21 @@ def init_database():
             cursor.execute("UPDATE activities SET streams_fetched = 1 WHERE has_streams = 1")
             conn.commit()
             print("Migrated existing activities with streams")
+
+        # Migrate existing database: add processed_for_regions column if it doesn't exist
+        try:
+            cursor.execute("SELECT processed_for_regions FROM activities LIMIT 1")
+        except:
+            print("Adding processed_for_regions column to activities table...")
+            cursor.execute("ALTER TABLE activities ADD COLUMN processed_for_regions INTEGER DEFAULT 0")
+            # For existing activities that are already linked, mark as processed
+            cursor.execute("""
+                UPDATE activities 
+                SET processed_for_regions = 1 
+                WHERE id IN (SELECT DISTINCT activity_id FROM activity_lau)
+            """)
+            conn.commit()
+            print("Migrated existing activities with processed_for_regions flag")
 
         # LAU regions table
         cursor.execute("""

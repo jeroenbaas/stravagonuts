@@ -11,7 +11,7 @@ from .database import (
 
 LAU_URL = "https://gisco-services.ec.europa.eu/distribution/v2/lau/shp/LAU_RG_01M_2024_3035.shp.zip"
 LAU_DATA_DIR = "lau_data"
-STATIC_DIR = "static"
+STATIC_DIR = os.path.join(os.path.dirname(__file__), 'static')
 
 
 def ensure_lau_shapefile():
@@ -157,6 +157,18 @@ def plot_activities_map(lau, overlapping, linestrings, save_path):
 def generate_map(status_dict=None):
     """Generate map from activities in database."""
     print("[MAP] Generating map...")
+
+    # Clean up existing map files to ensure freshness
+    try:
+        if os.path.exists(STATIC_DIR):
+            for f in os.listdir(STATIC_DIR):
+                if f.startswith("map_") and f.endswith(".html"):
+                    try:
+                        os.remove(os.path.join(STATIC_DIR, f))
+                    except Exception as e:
+                        print(f"[MAP] Error deleting {f}: {e}")
+    except Exception as e:
+        print(f"[MAP] Error cleaning up static directory: {e}")
 
     # Load LAU shapefile
     print("[MAP] Loading LAU shapefile...")

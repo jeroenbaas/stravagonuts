@@ -469,9 +469,8 @@ def serve_map(level):
 
     map_path = os.path.join(os.path.dirname(__file__), 'static', map_filename)
 
-    # For country-filtered maps, always regenerate to ensure fresh data
-    # For standard maps, check if exists first
-    if not country and os.path.exists(map_path):
+    # Check if map exists
+    if os.path.exists(map_path):
         from flask import send_file
         return send_file(map_path)
 

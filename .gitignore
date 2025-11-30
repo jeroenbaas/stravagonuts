@@ -48,3 +48,4 @@ build/
 dist/
 *.spec.backup
 stravagonuts/static/map*
+stravagonuts/static/map.png
