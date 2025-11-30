@@ -207,37 +207,64 @@ def loading_status():
     return jsonify(processing_status)
 
 
-@app.route('/update')
+@app.route("/api/update", methods=["POST"])
 def update_activities():
     """Trigger activity update."""
-    if processing_status["is_processing"]:
-        return redirect(url_for('loading'))
+    global processing_status
 
-    def run_update():
-        processing_status["is_processing"] = True
-        processing_status["message"] = "Starting update..."
-        processing_status["progress"] = 0
-        processing_status["current_locations"] = []
-        
+    print("\n" + "="*60)
+    print("[UPDATE] Update endpoint called")
+    print("="*60)
+
+    if processing_status["is_processing"]:
+        print("[UPDATE] Already processing, returning error")
+        return jsonify({"error": "Already processing"}), 400
+
+    def process():
+        global processing_status
         try:
-            # Use new parallel processing
-            fetch_and_process_parallel(processing_status)
-            
+            print("[UPDATE] Starting processing thread...")
+            processing_status["is_processing"] = True
+            processing_status["stage"] = "Syncing with Strava"
+            processing_status["progress"] = 0
+            processing_status["total"] = 0
+            processing_status["current_locations"] = []
+
+            # Fetch and process activities
+            print("[UPDATE] Calling fetch_and_process_parallel...")
+            fetch_and_process_parallel(processing_status, fetch_all=False)
+
             # Generate map
+            print("[UPDATE] Calling generate_map...")
+            processing_status["stage"] = "Generating map"
+            processing_status["progress"] = 0
+            processing_status["total"] = 1
+            processing_status["message"] = "Creating map visualization..."
+            from .map_generator import generate_map
             generate_map(processing_status)
-            
+
+            processing_status["stage"] = "Complete"
+            processing_status["message"] = "Update complete!"
+            processing_status["progress"] = 1
+            processing_status["total"] = 1
+            print("[UPDATE] Processing complete!")
+
         except Exception as e:
-            print(f"Update failed: {e}")
-            processing_status["message"] = f"Error: {e}"
+            print(f"[UPDATE] ERROR: {e}")
+            import traceback
+            traceback.print_exc()
+            processing_status["stage"] = "Error"
+            processing_status["message"] = str(e)
+
         finally:
             processing_status["is_processing"] = False
-            processing_status["stage"] = "Complete"
 
     import threading
-    thread = threading.Thread(target=run_update)
+    thread = threading.Thread(target=process)
     thread.start()
+    print("[UPDATE] Background thread started")
 
-    return redirect(url_for('loading'))
+    return jsonify({"success": True})
 
 
 @app.route("/api/reset", methods=["POST"])
