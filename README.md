@@ -20,58 +20,31 @@ Map your Strava activities across European administrative regions (LAU and NUTS 
 
 ## Installation
 
-### macOS
-
-1. Install GDAL (required for geospatial libraries):
-```bash
-brew install gdal
-```
-
-2. Clone the repository:
-```bash
-git clone git@github.com:jeroenbaas/stravagonuts.git
-cd stravagonuts
-```
-
-3. Create a virtual environment (recommended):
-```bash
-python3 -m venv venv
-source venv/bin/activate
-```
-
-4. Install dependencies:
-```bash
-pip install -r requirements.txt
-```
-
-5. Run the application:
-```bash
-python run.py
-```
-
-6. Open your browser at `http://localhost:5000`
-
-### Linux/Windows
-
 1. Clone the repository:
 ```bash
 git clone git@github.com:jeroenbaas/stravagonuts.git
 cd stravagonuts
 ```
 
-2. Install dependencies:
+2. Create a virtual environment (recommended):
+```bash
+python3 -m venv venv
+source venv/bin/activate
+```
+
+3. Install dependencies:
 ```bash
 pip install -r requirements.txt
 ```
 
-3. Run the application:
+4. Run the application:
 ```bash
 python run.py
 ```
 
-4. Open your browser at `http://localhost:5000`
-
 ## First-Time Setup
+
+You will be guided through below steps in the application itself: 
 
 1. Go to [Strava API Settings](https://www.strava.com/settings/api)
 2. Create a new application
@@ -97,7 +70,7 @@ python run.py
 
 ## Reset Options
 
-Use `reset.py` to clear data:
+Use `reset.py` to clear data; you can also do this within the app.
 
 ```bash
 python reset.py
