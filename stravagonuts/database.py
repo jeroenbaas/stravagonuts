@@ -394,14 +394,14 @@ def get_activities_not_fetched_count():
 
 
 def get_activities_without_region_links():
-    """Get activities that have streams but haven't been linked to any regions."""
+    """Get activities that have streams but haven't been processed for regions yet."""
     with get_db() as conn:
         cursor = conn.cursor()
         cursor.execute("""
             SELECT COUNT(*) as count
             FROM activities
             WHERE has_streams = 1
-            AND id NOT IN (SELECT DISTINCT activity_id FROM activity_lau)
+            AND processed_for_regions = 0
         """)
         return cursor.fetchone()["count"]
 
@@ -564,6 +564,23 @@ def get_nuts_regions_by_level_filtered(level, country_code):
             ORDER BY nuts_first_visited.first_visited DESC
         """, (level, country_code))
         return [dict(row) for row in cursor.fetchall()]
+
+
+def mark_activities_processed_for_regions(activity_ids):
+    """Mark activities as processed for region linking."""
+    if not activity_ids:
+        return
+
+    with get_db() as conn:
+        cursor = conn.cursor()
+        placeholders = ','.join('?' * len(activity_ids))
+        cursor.execute(f"""
+            UPDATE activities
+            SET processed_for_regions = 1
+            WHERE id IN ({placeholders})
+        """, activity_ids)
+        conn.commit()
+        print(f"[DB] Marked {len(activity_ids)} activities as processed for regions")
 
 
 def get_total_regions_count(country_code=None):

@@ -5,7 +5,7 @@ import zipfile
 from .database import (
     get_all_activities_with_streams, link_activity_lau,
     update_lau_first_visited_dates, link_activity_nuts,
-    update_nuts_first_visited_dates
+    update_nuts_first_visited_dates, mark_activities_processed_for_regions
 )
 
 
@@ -239,6 +239,10 @@ def generate_map(status_dict=None):
         print(f"[MAP] ERROR processing NUTS regions: {e}")
         import traceback
         traceback.print_exc()
+
+    # Mark all processed activities as complete
+    print("[MAP] Marking activities as processed...")
+    mark_activities_processed_for_regions(activity_ids)
 
     # Generate static map (LAU only for backward compatibility)
     print("[MAP] Plotting static map image...")
@@ -570,6 +574,10 @@ def generate_interactive_map_generic(overlapping, linestrings, save_path, name_c
     if overlapping.crs != "EPSG:4326":
         overlapping = overlapping.to_crs("EPSG:4326")
 
+    # Simplify geometries to reduce file size (tolerance in degrees, ~100m at equator)
+    print(f"[MAP] Simplifying {len(overlapping)} region geometries...")
+    overlapping['geometry'] = overlapping['geometry'].simplify(tolerance=0.001, preserve_topology=True)
+
     # Use region bounds for center and zoom if we have regions
     # Otherwise fall back to activity bounds
     if not overlapping.empty:
@@ -608,16 +616,22 @@ def generate_interactive_map_generic(overlapping, linestrings, save_path, name_c
             tooltip=f"{region_name} ({region_code})"
         ).add_to(m)
     
-    # Add activity routes
-    for linestring in linestrings:
-        coords = [(lat, lon) for lon, lat in linestring.coords]
-        folium.PolyLine(
-            coords,
-            color='#FC4C02',
-            weight=3,
-            opacity=0.7,
-            popup='Activity Route'
-        ).add_to(m)
+    # Add activity routes (simplified to reduce file size)
+    print(f"[MAP] Adding {len(linestrings)} activity routes...")
+    for idx, linestring in enumerate(linestrings):
+        # Simplify activity linestrings (tolerance ~50m at equator)
+        simplified_line = linestring.simplify(tolerance=0.0005, preserve_topology=False)
+        coords = [(lat, lon) for lon, lat in simplified_line.coords]
+
+        # Only add if we have at least 2 points after simplification
+        if len(coords) >= 2:
+            folium.PolyLine(
+                coords,
+                color='#FC4C02',
+                weight=3,
+                opacity=0.7,
+                popup=f'Activity {idx + 1}'
+            ).add_to(m)
     
     # Fit bounds
     southwest = [bounds[1], bounds[0]]
