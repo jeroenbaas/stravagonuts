@@ -2,7 +2,7 @@
 Strava GO NUTS - Map your Strava activities across European administrative regions.
 """
 
-__version__ = "1.0.2"
+__version__ = "1.0.3"
 
 from .app import create_app
 
