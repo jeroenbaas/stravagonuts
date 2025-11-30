@@ -9,8 +9,11 @@ from .database import (
     get_activities_not_fetched_count, get_nuts_regions_by_level, clear_activities,
     get_activities_without_region_links
 )
-from .strava_service import fetch_and_store_activities, process_activity_streams
-
+from .strava_service import (
+    fetch_and_store_activities,
+    fetch_and_process_parallel
+)
+from .map_generator import generate_map
 
 
 # Module-level app instance for routes
@@ -23,9 +26,10 @@ STRAVA_TOKEN_URL = "https://www.strava.com/api/v3/oauth/token"
 # Global variable to track processing status
 processing_status = {
     "is_processing": False,
-    "stage": "",
+    "stage": "Idle",
     "progress": 0,
-    "total": 0,
+    "total": 100,
+    "current_locations": [],  # List of {lat, lng} for map animation
     "message": ""
 }
 
@@ -36,11 +40,24 @@ def create_app():
 
 
 @app.route("/")
-def index():
+def map_view():
     """Landing page - setup or map view."""
-    if not is_configured():
-        return redirect(url_for("setup"))
+    # Check if we are currently processing
+    if processing_status["is_processing"]:
+        return redirect(url_for('loading'))
 
+    # Check if configured
+    if not is_configured():
+        return redirect(url_for('auth'))
+
+    # Check if we have data
+    count = get_activity_count()
+    if count == 0:
+        # If configured but no data, we might be in initial load
+        # Trigger update and redirect to loading
+        return redirect(url_for('update_activities'))
+
+    # Check for cached map (fast path)
     activity_count = get_activity_count()
     activities_with_streams = get_activities_with_streams_count()
     activities_not_fetched = get_activities_not_fetched_count()
@@ -69,24 +86,6 @@ def index():
         maps_exist = any(os.path.exists(f) for f in map_files)
         maps_missing = not maps_exist
 
-    # Check if we should auto-start processing
-    # Auto-process if:
-    # 1. Activities need GPS fetch attempt, OR
-    # 2. Maps are missing but we have activities with GPS data, OR
-    # 3. Activities with GPS data are not linked to regions (recovery from crash)
-    should_auto_process = (
-        (activities_not_fetched > 0 or maps_missing or activities_without_links > 0) and
-        not processing_status["is_processing"]
-    )
-
-    if should_auto_process:
-        if activities_not_fetched > 0:
-            print(f"[INDEX] Auto-processing will be triggered: {activities_not_fetched} activities need GPS fetch attempt")
-        elif activities_without_links > 0:
-            print(f"[INDEX] Auto-processing will be triggered: {activities_without_links} activities with GPS data are not linked to regions")
-        elif maps_missing:
-            print(f"[INDEX] Auto-processing will be triggered: Maps missing but {activities_with_streams} activities with GPS data found")
-
     return render_template(
         "index.html",
         activity_count=activity_count,
@@ -97,16 +96,15 @@ def index():
         has_data=activity_count > 0,
         athlete_name=athlete_name,
         athlete_id=athlete_id,
-        should_auto_process=should_auto_process
     )
 
 
-@app.route("/setup")
-def setup():
+@app.route("/auth")
+def auth():
     """Initial setup page for Strava credentials."""
     if is_configured():
-        return redirect(url_for("index"))
-    return render_template("setup.html")
+        return redirect(url_for("map_view"))
+    return render_template("auth.html")
 
 
 @app.route("/api/save-credentials", methods=["POST"])
@@ -131,7 +129,7 @@ def oauth_authorize():
     client_id = get_setting("client_id")
 
     if not client_id:
-        return redirect(url_for("setup"))
+        return redirect(url_for("auth"))
 
     redirect_uri = request.url_root.rstrip("/") + url_for("oauth_callback")
 
@@ -185,7 +183,7 @@ def oauth_callback():
             set_setting("athlete_lastname", athlete.get("lastname", ""))
             set_setting("athlete_username", athlete.get("username", ""))
 
-        return redirect(url_for("index"))
+        return redirect(url_for("map_view"))
 
     except Exception as e:
         return f"Token exchange failed: {str(e)}", 500
@@ -197,67 +195,49 @@ def get_status():
     return jsonify(processing_status)
 
 
-@app.route("/api/update", methods=["POST"])
+@app.route('/loading')
+def loading():
+    """Render loading screen."""
+    return render_template('loading.html')
+
+
+@app.route('/api/loading-status')
+def loading_status():
+    """Get current loading status."""
+    return jsonify(processing_status)
+
+
+@app.route('/update')
 def update_activities():
-    """Update with new activities since last sync."""
-    global processing_status
-
-    print("\n" + "="*60)
-    print("[UPDATE] Update endpoint called")
-    print("="*60)
-
+    """Trigger activity update."""
     if processing_status["is_processing"]:
-        print("[UPDATE] Already processing, returning error")
-        return jsonify({"error": "Already processing"}), 400
+        return redirect(url_for('loading'))
 
-    def process():
-        global processing_status
+    def run_update():
+        processing_status["is_processing"] = True
+        processing_status["message"] = "Starting update..."
+        processing_status["progress"] = 0
+        processing_status["current_locations"] = []
+        
         try:
-            print("[UPDATE] Starting processing thread...")
-            processing_status["is_processing"] = True
-            processing_status["stage"] = "Fetching activities"
-            processing_status["progress"] = 0
-            processing_status["total"] = 0
-
-            # Fetch and store activities
-            print("[UPDATE] Calling fetch_and_store_activities...")
-            fetch_and_store_activities(processing_status)
-
-            # Process streams
-            print("[UPDATE] Calling process_activity_streams...")
-            process_activity_streams(processing_status)
-
+            # Use new parallel processing
+            fetch_and_process_parallel(processing_status)
+            
             # Generate map
-            print("[UPDATE] Calling generate_map...")
-            processing_status["stage"] = "Generating map"
-            processing_status["progress"] = 0
-            processing_status["total"] = 1
-            processing_status["message"] = "Creating map visualization..."
-            from .map_generator import generate_map
             generate_map(processing_status)
-
-            processing_status["stage"] = "Complete"
-            processing_status["message"] = "Update complete!"
-            processing_status["progress"] = 1
-            processing_status["total"] = 1
-            print("[UPDATE] Processing complete!")
-
+            
         except Exception as e:
-            print(f"[UPDATE] ERROR: {e}")
-            import traceback
-            traceback.print_exc()
-            processing_status["stage"] = "Error"
-            processing_status["message"] = str(e)
-
+            print(f"Update failed: {e}")
+            processing_status["message"] = f"Error: {e}"
         finally:
             processing_status["is_processing"] = False
+            processing_status["stage"] = "Complete"
 
     import threading
-    thread = threading.Thread(target=process)
+    thread = threading.Thread(target=run_update)
     thread.start()
-    print("[UPDATE] Background thread started")
 
-    return jsonify({"success": True})
+    return redirect(url_for('loading'))
 
 
 @app.route("/api/reset", methods=["POST"])
@@ -287,14 +267,10 @@ def reset_data():
             print("[RESET] Clearing all data from database...")
             clear_all_data()
 
-            # Fetch everything
-            print("[RESET] Fetching all activities...")
-            processing_status["stage"] = "Fetching all activities"
-            fetch_and_store_activities(processing_status, fetch_all=True)
-
-            # Process streams
-            print("[RESET] Processing activity streams...")
-            process_activity_streams(processing_status)
+            # Fetch and process everything
+            print("[RESET] Fetching and processing all activities...")
+            processing_status["stage"] = "Fetching and processing"
+            fetch_and_process_parallel(processing_status, fetch_all=True)
 
             # Generate map
             print("[RESET] Generating map...")
@@ -354,14 +330,10 @@ def reset_activities():
             print("[RESET ACTIVITIES] Clearing activity data from database...")
             clear_activities()
 
-            # Fetch everything
-            print("[RESET ACTIVITIES] Fetching all activities...")
-            processing_status["stage"] = "Fetching all activities"
-            fetch_and_store_activities(processing_status, fetch_all=True)
-
-            # Process streams
-            print("[RESET ACTIVITIES] Processing activity streams...")
-            process_activity_streams(processing_status)
+            # Fetch and process everything
+            print("[RESET ACTIVITIES] Fetching and processing all activities...")
+            processing_status["stage"] = "Fetching and processing"
+            fetch_and_process_parallel(processing_status, fetch_all=True)
 
             # Generate map
             print("[RESET ACTIVITIES] Generating map...")
@@ -560,12 +532,4 @@ def serve_map(level):
         """, 500
 
 
-@app.route("/map")
-def map_view():
-    """Serve the generated map image."""
-    from flask import send_file
-    map_path = "static/map.png"
-    if os.path.exists(map_path):
-        return send_file(map_path, mimetype="image/png")
-    else:
-        return "Map not generated yet. Please run Update Activities.", 404
+

@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Strava GO NUTS - Loading</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="{{ url_for('static', filename='loading.css') }}" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+</head>
+
+<body>
+    <div id="map"></div>
+    <div id="overlay">
+        <div class="content-box">
+            <h1>Syncing Activities</h1>
+            <div class="status-text" id="status-text">Connecting to Strava...</div>
+            <div class="progress-container">
+                <div class="progress-bar" id="progress-bar"></div>
+            </div>
+            <div class="stats">
+                <span id="progress-count">0</span>
+                <span id="total-count">0</span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Initialize map
+        const map = L.map('map', {
+            zoomControl: false,
+            attributionControl: false,
+            zoomSnap: 0.1
+        }).setView([20, 0], 2);
+
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+            subdomains: 'abcd',
+            maxZoom: 19
+        }).addTo(map);
+
+        const processedIds = new Set();
+
+        function updateStatus() {
+            fetch('/api/loading-status')
+                .then(response => response.json())
+                .then(data => {
+                    // Update text and progress
+                    document.getElementById('status-text').textContent = data.message;
+
+                    const percent = data.total > 0 ? (data.progress / data.total) * 100 : 0;
+                    document.getElementById('progress-bar').style.width = percent + '%';
+                    document.getElementById('progress-count').textContent = data.progress;
+                    document.getElementById('total-count').textContent = data.total > 0 ? '/ ' + data.total : '';
+
+                    // Add markers
+                    if (data.current_locations) {
+                        data.current_locations.forEach(loc => {
+                            if (loc.id && !processedIds.has(loc.id)) {
+                                processedIds.add(loc.id);
+
+                                // Create custom marker
+                                const icon = L.divIcon({
+                                    className: 'ping-marker',
+                                    html: '<div class="ping-ring"></div><div class="ping-dot"></div>',
+                                    iconSize: [40, 40],
+                                    iconAnchor: [20, 20]
+                                });
+
+                                L.marker([loc.lat, loc.lng], { icon: icon })
+                                    .addTo(map);
+                            }
+                        });
+                    }
+
+                    // Check for completion
+                    if (data.stage === 'Complete') {
+                        setTimeout(() => {
+                            window.location.href = '/';
+                        }, 1000);
+                    } else if (data.stage === 'Error') {
+                        document.getElementById('status-text').style.color = '#ff4444';
+                    }
+                })
+                .catch(err => console.error(err));
+        }
+
+        setInterval(updateStatus, 1000);
+        updateStatus();
+    </script>
+</body>
+
+</html>

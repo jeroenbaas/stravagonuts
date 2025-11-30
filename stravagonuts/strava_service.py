@@ -1,5 +1,7 @@
 import requests
 import time
+import queue
+import threading
 from datetime import datetime
 from .database import (
     get_setting, set_setting, save_activity, save_activity_streams,
@@ -9,6 +11,7 @@ from .database import (
 
 STRAVA_TOKEN_URL = "https://www.strava.com/api/v3/oauth/token"
 ACTIVITIES_URL = "https://www.strava.com/api/v3/athlete/activities"
+ATHLETE_STATS_URL = "https://www.strava.com/api/v3/athletes/{id}/stats"
 STREAMS_URL = "https://www.strava.com/api/v3/activities/{id}/streams?keys=latlng,time&key_by_type=true"
 
 
@@ -40,6 +43,37 @@ def get_headers():
     """Get authorization headers for Strava API."""
     access_token = get_setting("access_token")
     return {"Authorization": f"Bearer {access_token}"}
+
+
+def get_total_activity_count():
+    """Get total number of activities from Strava stats."""
+    athlete_id = get_setting("athlete_id")
+    if not athlete_id:
+        return 0
+    
+    url = ATHLETE_STATS_URL.format(id=athlete_id)
+    headers = get_headers()
+    
+    try:
+        response = requests.get(url, headers=headers)
+        if response.status_code == 401:
+            refresh_access_token()
+            headers = get_headers()
+            response = requests.get(url, headers=headers)
+            
+        response.raise_for_status()
+        stats = response.json()
+        print(f"[STRAVA] Stats response: {stats}")
+        
+        total = (
+            stats.get("all_ride_totals", {}).get("count", 0) +
+            stats.get("all_run_totals", {}).get("count", 0) +
+            stats.get("all_swim_totals", {}).get("count", 0)
+        )
+        return total
+    except Exception as e:
+        print(f"[STRAVA] Error getting stats: {e}")
+        return 0
 
 
 def fetch_and_store_activities_incremental(after_date=None, status_dict=None):
@@ -164,37 +198,128 @@ def get_activity_streams(activity_id):
         return None
 
 
-def process_activity_streams(status_dict):
-    """Download and store streams for all activities without them."""
-    print(f"[APP] process_activity_streams called")
-    activities = get_activities_without_streams()
-    print(f"[APP] Found {len(activities)} activities without streams")
-
-    if len(activities) == 0:
-        print(f"[APP] No activities need stream processing")
-        return 0
-
-    status_dict["stage"] = "Downloading GPS data"
-    status_dict["progress"] = 0
-    status_dict["total"] = len(activities)
-    status_dict["message"] = f"Processing {len(activities)} activities"
-
-    for idx, activity in enumerate(activities):
-        print(f"[APP] Fetching streams for activity {activity['id']} ({idx+1}/{len(activities)})")
-        status_dict["progress"] = idx + 1
-        status_dict["message"] = f"Downloading GPS data: {idx + 1} / {len(activities)}"
-
-        streams = get_activity_streams(activity["id"])
-
-        if streams and "latlng" in streams:
-            save_activity_streams(activity["id"], streams)
-            print(f"[APP] Saved streams for activity {activity['id']}")
-        else:
-            # Mark as fetched even though no GPS data available
-            mark_activity_no_streams(activity["id"])
-            print(f"[APP] No GPS data for activity {activity['id']} (marked as fetched)")
-
-        time.sleep(0.05)
-
     print(f"[APP] Processed {len(activities)} activity streams")
     return len(activities)
+
+
+def fetch_and_process_parallel(status_dict, fetch_all=False):
+    """
+    Fetch activities and streams in parallel.
+    Producer: Fetches activity pages.
+    Consumer: Fetches streams for new activities.
+    """
+    print(f"[PARALLEL] Starting parallel fetch and process (fetch_all={fetch_all})")
+    
+    # Initialize status
+    status_dict["stage"] = "Syncing with Strava"
+    status_dict["total"] = get_total_activity_count()
+    status_dict["progress"] = 0
+    status_dict["current_locations"] = []  # List of {lat, lng} for frontend
+    
+    # Queue for activities needing streams
+    activity_queue = queue.Queue()
+    stop_event = threading.Event()
+    
+    # Track processed count for progress bar
+    processed_count = 0
+    total_fetched = 0
+    
+    def stream_consumer():
+        nonlocal processed_count
+        while not stop_event.is_set() or not activity_queue.empty():
+            try:
+                activity = activity_queue.get(timeout=1)
+                
+                # Fetch stream
+                streams = get_activity_streams(activity["id"])
+                
+                if streams and "latlng" in streams:
+                    save_activity_streams(activity["id"], streams)
+                    
+                    # Add start location to status for map animation
+                    latlngs = streams["latlng"]["data"]
+                    if latlngs:
+                        start_loc = latlngs[0]
+                        status_dict["current_locations"].append({
+                            "id": activity["id"],
+                            "lat": start_loc[0],
+                            "lng": start_loc[1]
+                        })
+                        # Keep list small
+                        if len(status_dict["current_locations"]) > 20:
+                            status_dict["current_locations"].pop(0)
+                else:
+                    mark_activity_no_streams(activity["id"])
+                
+                processed_count += 1
+                status_dict["progress"] = processed_count
+                status_dict["message"] = f"Processed {processed_count} activities..."
+                
+                activity_queue.task_done()
+                
+            except queue.Empty:
+                continue
+            except Exception as e:
+                print(f"[PARALLEL] Consumer error: {e}")
+    
+    # Start consumer thread
+    consumer_thread = threading.Thread(target=stream_consumer, daemon=True)
+    consumer_thread.start()
+    
+    # Producer: Fetch activities
+    try:
+        after_date = None if fetch_all else get_last_activity_date()
+        headers = get_headers()
+        page = 1
+        per_page = 200
+        params = {"page": page, "per_page": per_page}
+        
+        if after_date:
+            after_timestamp = int(datetime.fromisoformat(after_date.replace("Z", "+00:00")).timestamp())
+            params["after"] = after_timestamp
+            
+        while True:
+            print(f"[PARALLEL] Fetching page {page}...")
+            response = requests.get(ACTIVITIES_URL, headers=headers, params=params)
+            
+            if response.status_code == 401:
+                refresh_access_token()
+                headers = get_headers()
+                response = requests.get(ACTIVITIES_URL, headers=headers, params=params)
+                
+            response.raise_for_status()
+            activities = response.json()
+            
+            if not activities:
+                break
+                
+            for activity in activities:
+                # Save basic info
+                save_activity(
+                    activity_id=activity["id"],
+                    name=activity.get("name", "Untitled"),
+                    activity_type=activity.get("type", "Unknown"),
+                    start_date=activity.get("start_date"),
+                    distance=activity.get("distance", 0),
+                )
+                total_fetched += 1
+                
+                # Queue for stream fetching
+                activity_queue.put(activity)
+                
+            if len(activities) < per_page:
+                break
+                
+            page += 1
+            params["page"] = page
+            
+    except Exception as e:
+        print(f"[PARALLEL] Producer error: {e}")
+        status_dict["message"] = f"Error: {str(e)}"
+        
+    # Signal consumer to stop when queue is empty
+    stop_event.set()
+    consumer_thread.join()
+    
+    print(f"[PARALLEL] Finished. Fetched: {total_fetched}, Processed: {processed_count}")
+    return processed_count
