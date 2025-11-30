@@ -1,14 +1,7 @@
 import os
 import requests
 import zipfile
-import geopandas as gpd
-from shapely.geometry import LineString, MultiLineString
-import contextily as ctx
-import matplotlib
-matplotlib.use('Agg')  # Use non-interactive backend
-import matplotlib.pyplot as plt
-import folium
-from folium import plugins
+
 from .database import (
     get_all_activities_with_streams, link_activity_lau,
     update_lau_first_visited_dates, link_activity_nuts,
@@ -60,6 +53,7 @@ def streams_to_linestring(streams):
     if len(coords) < 2:
         return None
 
+    from shapely.geometry import LineString
     return LineString(coords)
 
 
@@ -68,6 +62,7 @@ def find_overlapping_lau(lau, linestrings):
     if lau.crs != "EPSG:4326":
         lau = lau.to_crs("EPSG:4326")
 
+    from shapely.geometry import MultiLineString
     multi_line = MultiLineString(linestrings)
 
     # Fast bbox prefilter
@@ -98,6 +93,12 @@ def plot_activities_map(lau, overlapping, linestrings, save_path):
     # Reproject to Web Mercator
     lau = lau.to_crs(epsg=3857)
     overlapping = overlapping.to_crs(epsg=3857)
+
+    import geopandas as gpd
+    import contextily as ctx
+    import matplotlib
+    matplotlib.use('Agg')
+    import matplotlib.pyplot as plt
 
     all_lines_gs = gpd.GeoSeries(linestrings, crs="EPSG:4326").to_crs(epsg=3857)
 
@@ -159,6 +160,7 @@ def generate_map(status_dict=None):
 
     # Load LAU shapefile
     print("[MAP] Loading LAU shapefile...")
+    import geopandas as gpd
     shp_path = ensure_lau_shapefile()
     lau = gpd.read_file(shp_path)
     lau = lau.rename(columns={"GISCO_ID": "LAU_ID", "LAU_NAME": "NAME_LATN"})
@@ -279,6 +281,9 @@ def generate_interactive_map(lau, overlapping, linestrings, save_path):
         overlapping = overlapping.to_crs("EPSG:4326")
 
     # Calculate center and bounds
+    import geopandas as gpd
+    import folium
+    from folium import plugins
     all_lines_gs = gpd.GeoSeries(linestrings, crs="EPSG:4326")
     bounds = all_lines_gs.total_bounds  # minx, miny, maxx, maxy
     center_lat = (bounds[1] + bounds[3]) / 2
@@ -496,6 +501,7 @@ def generate_level_map(level, linestrings, save_path, country_code=None):
                     names.append(row['name'])
                     codes.append(row['lau_id'])
 
+        import geopandas as gpd
         overlapping = gpd.GeoDataFrame({
             'LAU_ID': codes,
             'NAME_LATN': names,
@@ -531,6 +537,7 @@ def generate_level_map(level, linestrings, save_path, country_code=None):
                     names.append(row['name'])
                     codes.append(row['nuts_code'])
 
+        import geopandas as gpd
         overlapping = gpd.GeoDataFrame({
             'NUTS_CODE': codes,
             'NUTS_NAME': names,
@@ -556,6 +563,7 @@ def generate_interactive_map_generic(overlapping, linestrings, save_path, name_c
     if not overlapping.empty:
         bounds = overlapping.total_bounds  # Use region bounds for better zoom
     else:
+        import geopandas as gpd
         all_lines_gs = gpd.GeoSeries(linestrings, crs="EPSG:4326")
         bounds = all_lines_gs.total_bounds
 
@@ -563,6 +571,8 @@ def generate_interactive_map_generic(overlapping, linestrings, save_path, name_c
     center_lon = (bounds[0] + bounds[2]) / 2
 
     # Create map
+    import folium
+    from folium import plugins
     m = folium.Map(
         location=[center_lat, center_lon],
         zoom_start=10,

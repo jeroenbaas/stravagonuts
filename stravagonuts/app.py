@@ -10,7 +10,7 @@ from .database import (
     get_activities_without_region_links
 )
 from .strava_service import fetch_and_store_activities, process_activity_streams
-from .map_generator import generate_map
+
 
 
 # Module-level app instance for routes
@@ -233,6 +233,7 @@ def update_activities():
             processing_status["progress"] = 0
             processing_status["total"] = 1
             processing_status["message"] = "Creating map visualization..."
+            from .map_generator import generate_map
             generate_map(processing_status)
 
             processing_status["stage"] = "Complete"
@@ -301,6 +302,7 @@ def reset_data():
             processing_status["progress"] = 0
             processing_status["total"] = 1
             processing_status["message"] = "Creating map visualization..."
+            from .map_generator import generate_map
             generate_map(processing_status)
 
             processing_status["stage"] = "Complete"
@@ -367,6 +369,7 @@ def reset_activities():
             processing_status["progress"] = 0
             processing_status["total"] = 1
             processing_status["message"] = "Creating map visualization..."
+            from .map_generator import generate_map
             generate_map(processing_status)
 
             processing_status["stage"] = "Complete"

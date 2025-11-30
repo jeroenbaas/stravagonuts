@@ -26,6 +26,7 @@ import logging
 import threading
 import webbrowser
 import time
+import argparse
 
 
 def download_regions_db():
@@ -76,14 +77,19 @@ def download_regions_db():
         return False
 
 
-def open_browser():
+def open_browser(port):
     """Open browser after short delay."""
     time.sleep(2.5)  # Longer delay to ensure server is ready
-    webbrowser.open("http://127.0.0.1:5000")
+    webbrowser.open(f"http://127.0.0.1:{port}")
 
 
 def main():
     """Initialize and run the application."""
+    parser = argparse.ArgumentParser(description="Strava GO NUTS")
+    parser.add_argument("--port", type=int, default=5001, help="Port to run the server on (default: 5001)")
+    args = parser.parse_args()
+    port = args.port
+
     print("="*60)
     print("STRAVA GO NUTS - STARTUP")
     print("="*60)
@@ -114,7 +120,7 @@ def main():
     print("STARTUP COMPLETE")
     print("="*60)
     print("\nStarting Strava GO NUTS web server...")
-    print("Server will run at: http://127.0.0.1:5000")
+    print(f"Server will run at: http://127.0.0.1:{port}")
     print("\nPress Ctrl+C to stop the server\n")
 
     # Suppress Flask request logging for /api/status to reduce console clutter
@@ -132,13 +138,13 @@ def main():
         return 1
 
     # Open browser in background thread
-    threading.Thread(target=open_browser, daemon=True).start()
+    threading.Thread(target=open_browser, args=(port,), daemon=True).start()
     print("[SERVER] Browser will open in 2.5 seconds...")
 
     # Run Flask app with error handling (localhost only - no external connections)
     try:
-        print("[SERVER] Starting Flask server on 127.0.0.1:5000...")
-        app.run(host="127.0.0.1", port=5000, debug=False, use_reloader=False, threaded=True)
+        print(f"[SERVER] Starting Flask server on 127.0.0.1:{port}...")
+        app.run(host="127.0.0.1", port=port, debug=False, use_reloader=False, threaded=True)
     except Exception as e:
         print(f"[ERROR] Flask server error: {e}")
         import traceback

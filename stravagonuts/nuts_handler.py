@@ -1,8 +1,7 @@
 import os
 import requests
 import zipfile
-import pandas as pd
-import geopandas as gpd
+
 
 
 # URLs for NUTS data
@@ -41,6 +40,7 @@ def parse_nuts_mapping():
     print("[NUTS] Parsing LAU to NUTS mapping...")
 
     # Read all sheet names
+    import pandas as pd
     excel_file = pd.ExcelFile(mapping_file)
     sheet_names = excel_file.sheet_names
 
@@ -140,6 +140,7 @@ def load_nuts_shapefile():
     shp_path = download_nuts_shapefile()
 
     print("[NUTS] Loading NUTS shapefile...")
+    import geopandas as gpd
     nuts_gdf = gpd.read_file(shp_path)
 
     # Standardize column names

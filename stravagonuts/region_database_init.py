@@ -19,9 +19,7 @@ def get_regions_db():
     finally:
         conn.close()
 
-from .nuts_handler import parse_nuts_mapping, load_nuts_shapefile, filter_nuts_by_level
-from .map_generator import ensure_lau_shapefile
-import geopandas as gpd
+
 
 
 def create_regions_schema():
@@ -173,6 +171,8 @@ def load_all_lau_regions():
     """Load all LAU regions from shapefile into database."""
 
     # Load LAU shapefile
+    from .map_generator import ensure_lau_shapefile
+    import geopandas as gpd
     shp_path = ensure_lau_shapefile()
     lau_gdf = gpd.read_file(shp_path)
     lau_gdf = lau_gdf.rename(columns={"GISCO_ID": "LAU_ID", "LAU_NAME": "NAME_LATN"})
@@ -206,6 +206,7 @@ def load_all_nuts_regions():
     """Load all NUTS regions from shapefile into database."""
 
     # Load NUTS shapefile
+    from .nuts_handler import load_nuts_shapefile
     nuts_gdf = load_nuts_shapefile()
 
     print(f"  Loading {len(nuts_gdf)} NUTS regions from shapefile...")
@@ -245,6 +246,7 @@ def create_lau_nuts_mappings():
     """Create LAU to NUTS mappings from Excel file."""
 
     # Parse Excel mapping
+    from .nuts_handler import parse_nuts_mapping
     lau_nuts_df = parse_nuts_mapping()
 
     print(f"  Creating {len(lau_nuts_df)} LAU-NUTS mappings...")
