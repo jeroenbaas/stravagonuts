@@ -53,9 +53,38 @@ def map_view():
     # Check if we have data
     count = get_activity_count()
     if count == 0:
-        # If configured but no data, we might be in initial load
-        # Trigger update and redirect to loading
-        return redirect(url_for('update_activities'))
+        # If configured but no data, trigger initial load
+        # Start the update process
+        if not processing_status["is_processing"]:
+            def run_initial_fetch():
+                processing_status["is_processing"] = True
+                processing_status["stage"] = "Syncing with Strava"
+                processing_status["progress"] = 0
+                processing_status["total"] = 0
+                processing_status["current_locations"] = []
+
+                try:
+                    from .strava_service import fetch_and_process_parallel
+                    fetch_and_process_parallel(processing_status, fetch_all=True)
+
+                    from .map_generator import generate_map
+                    generate_map(processing_status)
+
+                    processing_status["stage"] = "Complete"
+                    processing_status["message"] = "Initial sync complete!"
+                except Exception as e:
+                    print(f"Initial fetch error: {e}")
+                    processing_status["stage"] = "Error"
+                    processing_status["message"] = str(e)
+                finally:
+                    processing_status["is_processing"] = False
+
+            import threading
+            thread = threading.Thread(target=run_initial_fetch)
+            thread.start()
+
+        # Redirect to loading page
+        return redirect(url_for('loading'))
 
     # Check for cached map (fast path)
     activity_count = get_activity_count()
@@ -183,6 +212,7 @@ def oauth_callback():
             set_setting("athlete_lastname", athlete.get("lastname", ""))
             set_setting("athlete_username", athlete.get("username", ""))
 
+        # Redirect to home page (which will check for data and trigger initial fetch if needed)
         return redirect(url_for("map_view"))
 
     except Exception as e:
