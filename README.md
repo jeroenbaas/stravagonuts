@@ -16,7 +16,7 @@ Map your Strava activities across European administrative regions (LAU and NUTS 
 ## Requirements
 
 - Python 3.7+
-- Strava API credentials (Client ID and Secret)
+- Strava API credentials (Client ID and Secret; don't worry: the app will tell you what to do)
 
 ## Installation
 
